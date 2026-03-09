@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WPW Localizer · v2</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg2:#0c1018;--bg3:#111827;--bg4:#1a2332;
+  --border:#1e2d45;--border2:#2a3f5f;
+  --accent:#3b82f6;--accent2:#60a5fa;
+  --red:#ef4444;--green:#22c55e;--yellow:#f59e0b;--orange:#f97316;--purple:#a78bfa;
+  --text:#e2e8f0;--muted:#64748b;--muted2:#374151;
+  --font:'DM Mono','Courier New',monospace;
+  --display:'Cormorant Garamond',Georgia,serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+input[type=number]{-moz-appearance:textfield}
+
+/* LAYOUT */
+header{position:sticky;top:0;z-index:100;background:rgba(7,9,15,0.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:36px;height:36px;border-radius:7px;background:var(--bg3);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center}
+.logo-name{font-family:var(--display);font-size:19px;color:#f8fafc;letter-spacing:0.01em}
+.logo-version{font-size:9px;color:var(--muted);letter-spacing:0.14em;margin-top:1px}
+.status{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--muted);letter-spacing:0.08em}
+.pulse{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2.5s ease infinite}
+
+/* STEPS */
+.steps{display:flex;padding:0 32px;border-bottom:1px solid var(--border);gap:0;overflow-x:auto}
+.step{padding:12px 20px;font-size:10px;letter-spacing:0.1em;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all 0.2s}
+.step:hover{color:#94a3b8}
+.step.active{border-bottom-color:var(--accent);color:var(--accent2)}
+.step.done{color:var(--green)}
+
+main{max-width:1040px;margin:0 auto;padding:28px 32px}
+.panel{animation:fadeUp 0.3s ease forwards}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.8)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px}
+.card-title{font-size:9px;color:var(--muted);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:14px}
+
+/* UPLOAD */
+.upload-zone{border:2px dashed var(--border);border-radius:10px;cursor:pointer;transition:all 0.2s;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;position:relative;overflow:hidden}
+.upload-zone:hover{border-color:var(--accent);background:rgba(59,130,246,0.03)}
+.upload-zone.has-file{border-color:var(--accent);border-style:solid}
+.upload-zone.has-max{border-color:var(--green);border-style:solid}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-text{font-size:12px;color:var(--muted);pointer-events:none}
+.upload-hint{font-size:10px;color:var(--muted2);pointer-events:none;letter-spacing:0.06em}
+.preview-img{max-height:150px;max-width:100%;border-radius:6px;object-fit:contain;pointer-events:none}
+.file-ok{font-size:10px;color:var(--green);margin-top:5px;letter-spacing:0.06em}
+
+/* GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.g13{display:grid;grid-template-columns:1fr 2.2fr;gap:20px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+
+/* INPUTS */
+.field{display:flex;flex-direction:column;gap:4px}
+.field-label{font-size:9px;color:var(--muted);letter-spacing:0.1em}
+.field-hint{font-size:9px;color:var(--muted2);margin-top:2px}
+.inp-wrap{position:relative}
+.inp-unit{position:absolute;right:9px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted);pointer-events:none}
+input[type=number],input[type=text]{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 34px 9px 10px;color:#f1f5f9;font-size:13px;font-family:var(--font);outline:none;transition:border-color 0.2s}
+input[type=number]:focus,input[type=text]:focus{border-color:var(--accent)}
+.inp-auto{border-color:var(--purple) !important;background:rgba(167,139,250,0.04) !important}
+
+/* POLARITY GRID */
+.leads-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.lead-col{display:flex;flex-direction:column;align-items:center;gap:3px}
+.lead-name{font-size:10px;color:#94a3b8}
+.lead-btns{display:flex;gap:2px;flex-wrap:wrap;justify-content:center}
+.pb{width:24px;height:22px;border-radius:4px;font-size:9px;font-family:var(--font);cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--muted);transition:all 0.12s}
+.pb:hover{border-color:#94a3b8;color:#94a3b8}
+.pb.pos{background:#14391f;border-color:var(--green);color:var(--green)}
+.pb.neg{background:#3b1010;border-color:var(--red);color:var(--red)}
+.pb.mix{background:#2d2208;border-color:var(--yellow);color:var(--yellow)}
+.pb.iso{background:#111d35;border-color:var(--accent);color:var(--accent2)}
+
+/* BUTTONS */
+.btn{padding:11px 22px;border-radius:7px;font-size:10px;letter-spacing:0.1em;cursor:pointer;font-family:var(--font);transition:all 0.18s;border:none;display:inline-flex;align-items:center;gap:8px}
+.btn:disabled{opacity:0.35;cursor:not-allowed}
+.btn-primary{background:var(--bg3);border:1px solid var(--accent);color:var(--accent2)}
+.btn-primary:hover:not(:disabled){background:var(--accent);color:#fff}
+.btn-ghost{background:none;border:1px solid var(--border);color:var(--muted)}
+.btn-ghost:hover{border-color:#94a3b8;color:#94a3b8}
+.btn-claude{background:linear-gradient(135deg,#1a103d,#0f1e3d);border:1px solid var(--purple);color:var(--purple)}
+.btn-claude:hover:not(:disabled){background:var(--purple);color:#fff}
+.btn-green{background:#0f2d1a;border:1px solid var(--green);color:var(--green)}
+.btn-green:hover:not(:disabled){background:var(--green);color:#fff}
+.btn-row{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:10px}
+.btn-right{display:flex;justify-content:flex-end;margin-top:18px}
+
+/* ANNULUS */
+.annulus-container{display:flex;justify-content:center}
+.annulus-container svg{width:100%;max-width:270px}
+
+/* GAUGE */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.gauge-wrap svg{width:128px;height:128px}
+.gauge-label{font-size:13px;font-weight:600}
+.gauge-sub{font-size:10px;color:#94a3b8}
+
+/* RESULT */
+.loc-name{font-family:var(--display);font-size:24px;color:var(--accent2);margin-bottom:8px;line-height:1.2}
+.conf-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.conf-track{flex:1;height:3px;border-radius:2px;background:var(--border);overflow:hidden}
+.conf-fill{height:100%;border-radius:2px;background:var(--accent);transition:width 1.2s ease}
+.alert{padding:9px 13px;border-radius:7px;font-size:10px;margin-bottom:8px;line-height:1.6}
+.alert-y{background:#1c1500;border:1px solid var(--yellow);color:var(--yellow)}
+.alert-g{background:#081a0e;border:1px solid var(--green);color:var(--green)}
+.alert-r{background:#1c0808;border:1px solid var(--red);color:var(--red)}
+.alert-body{color:#94a3b8;margin-top:2px;font-size:10px}
+
+/* CLAUDE PANEL */
+.claude-panel{background:#08050f;border:1px solid #2d1f5e;border-radius:10px;padding:22px;margin-top:20px}
+.claude-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.claude-title{font-size:11px;color:var(--purple);letter-spacing:0.1em}
+.claude-sub{font-size:10px;color:var(--muted2);margin-top:2px}
+.claude-output{font-size:12px;color:#94a3b8;line-height:1.95;border-top:1px solid #1a1040;padding-top:14px;white-space:pre-wrap}
+.claude-placeholder{font-size:11px;color:var(--muted2);font-style:italic}
+
+/* LOADER */
+.spin{width:12px;height:12px;border:2px solid rgba(167,139,250,0.3);border-top-color:var(--purple);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block}
+
+/* RECAP */
+.recap-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(30,45,69,0.5)}
+.recap-k{font-size:10px;color:var(--muted)}
+.recap-v{font-size:10px;color:var(--green);max-width:220px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recap-v.empty{color:var(--muted2)}
+
+/* EXPORT ROW */
+.export-row{display:flex;justify-content:space-between;align-items:center;margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}
+
+/* ECG GRID BG */
+.ecg-bg{background-image:repeating-linear-gradient(0deg,transparent,transparent 19px,#0d1520 19px,#0d1520 20px),repeating-linear-gradient(90deg,transparent,transparent 19px,#0d1520 19px,#0d1520 20px)}
+
+/* TAG */
+.tag-auto{display:inline-block;padding:1px 6px;border-radius:3px;font-size:8px;background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.3);color:var(--purple);letter-spacing:0.06em;vertical-align:middle;margin-left:4px}
+
+@media(max-width:680px){.g2,.g13,.g4{grid-template-columns:1fr}main{padding:16px}.leads-grid{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2">
+        <polyline points="2,12 5,12 7,4 9,20 11,9 13,15 15,12 22,12"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-name">WPW Localizer</div>
+      <div class="logo-version">FAISCEAU ACCESSOIRE · ANALYSE EP · v2.0</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+  <button id="mode-btn" onclick="toggleMode()" class="btn btn-ghost" style="font-size:9px;padding:7px 14px">
+    MODE ANNOTATION RAPIDE
+  </button>
+  <div class="status"><div class="pulse"></div>SYSTÈME ACTIF</div>
+</div>
+</header>
+
+<div id="api-bar" style="background:#0a0f1a;border-bottom:1px solid #1e2d45;padding:9px 32px;display:flex;align-items:center;gap:12px">
+  <span style="font-size:10px;color:#64748b;letter-spacing:0.1em;white-space:nowrap">CLÉ API CLAUDE</span>
+  <div style="position:relative;flex:1;max-width:440px">
+    <input type="password" id="api-key-input" placeholder="sk-ant-api03-..."
+      style="width:100%;background:#07090f;border:1px solid #1e2d45;border-radius:6px;padding:7px 36px 7px 10px;color:#f1f5f9;font-size:12px;font-family:'DM Mono',monospace;outline:none;transition:border-color 0.2s"
+      oninput="saveKey(this.value)">
+    <button onclick="toggleKey()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#64748b;font-size:13px">👁</button>
+  </div>
+  <div id="key-status" style="font-size:10px;letter-spacing:0.06em;color:#374151">Non configurée</div>
+</div>
+
+<div class="steps">
+  <button class="step active" onclick="goTo(0)">01 · UPLOAD</button>
+  <button class="step" onclick="goTo(1)">02 · ANALYSE CLAUDE</button>
+  <button class="step" onclick="goTo(2)">03 · VÉRIFICATION</button>
+  <button class="step" onclick="goTo(3)">04 · RÉSULTAT</button>
+</div>
+
+<!-- ANNOTATION RAPIDE MODE -->
+<div id="annot-mode" style="display:none">
+  <div style="max-width:1040px;margin:0 auto;padding:20px 32px;display:grid;grid-template-columns:1fr 1fr;gap:24px;height:calc(100vh - 140px)">
+    
+    <!-- LEFT: ECG image -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:9px;color:#64748b;letter-spacing:0.1em">ECG · <span id="annot-counter" style="color:#60a5fa">0 annoté(s)</span></div>
+      <div id="annot-drop" style="flex:1;border:2px dashed #1e2d45;border-radius:10px;background:#0c1018;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden;transition:border-color 0.2s" onclick="document.getElementById('annot-file-input').click()">
+        <input type="file" id="annot-file-input" accept=".png,.jpg,.jpeg" multiple style="display:none" onchange="loadAnnotFiles(event)">
+        <div id="annot-drop-text" style="text-align:center">
+          <div style="font-size:13px;color:#374151;margin-bottom:6px">Charger PNG(s)</div>
+          <div style="font-size:10px;color:#1e2d45">Cliquer ou glisser-déposer · plusieurs fichiers acceptés</div>
+        </div>
+        <img id="annot-img" style="display:none;max-width:100%;max-height:100%;object-fit:contain;border-radius:6px" alt="">
+      </div>
+      <div id="annot-filename" style="font-size:10px;color:#64748b;text-align:center"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" style="flex:1;font-size:10px" onclick="annotSkip()">PASSER →</button>
+        <div style="font-size:10px;color:#374151;display:flex;align-items:center">ou appuyer Entrée après sélection</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Annulus selection -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:9px;color:#64748b;letter-spacing:0.1em">LOCALISATION · cliquer sur l'anneau</div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+        <svg id="annulus-annot" viewBox="0 0 320 320" style="width:100%;max-width:320px"></svg>
+        <div id="annot-selected" style="font-size:13px;color:#374151;letter-spacing:0.06em">Aucune localisation sélectionnée</div>
+      </div>
+      <button id="annot-save-btn" class="btn btn-green" style="width:100%;justify-content:center;font-size:11px;opacity:0.3" disabled onclick="annotSave()">
+        ✓ SAUVEGARDER → CAS SUIVANT &nbsp;[ENTRÉE]
+      </button>
+      <div id="annot-status" style="font-size:10px;color:#374151;text-align:center;min-height:16px"></div>
+    </div>
+  </div>
+</div>
+
+<main id="main-content">
+
+<!-- STEP 0: UPLOAD -->
+<div id="step-0" class="panel">
+  <div style="display:flex;flex-direction:column;gap:18px">
+
+    <div>
+      <div class="card-title">ECG SINUSAL · REQUIS</div>
+      <div class="upload-zone ecg-bg" id="zone-sin" style="min-height:170px;padding:28px;cursor:pointer;position:relative;overflow:hidden">
+        <input type="file" id="file-sin" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFile(event,'sin')" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
+        <svg id="icon-sin" width="36" height="36" viewBox="0 0 48 48" fill="none">
+          <rect x="8" y="8" width="32" height="36" rx="4" stroke="#1e2d45" stroke-width="1.5"/>
+          <polyline points="13,28 17,28 19,22 21,34 23,26 25,30 27,28 35,28" stroke="#3b82f6" stroke-width="2"/>
+          <line x1="24" y1="8" x2="24" y2="15" stroke="#3b82f6" stroke-width="2"/>
+          <polyline points="20,12 24,8 28,12" stroke="#3b82f6" stroke-width="2"/>
+        </svg>
+        <div class="upload-text" id="txt-sin">Charger l'ECG sinusal</div>
+        <div class="upload-hint">JPEG · PNG · PDF</div>
+        <img id="prev-sin" style="display:none;max-height:150px;max-width:100%;border-radius:6px;object-fit:contain" alt="">
+      </div>
+      <div id="name-sin" class="file-ok" style="display:none"></div>
+    </div>
+
+    <div>
+      <div class="card-title">ECG PRÉ-EXCITATION MAXIMALE · OPTIONNEL <span style="color:#22c55e;font-size:9px">(améliore la précision ML)</span></div>
+      <div class="upload-zone ecg-bg" id="zone-max" style="min-height:110px;padding:20px;cursor:pointer;position:relative;overflow:hidden">
+        <input type="file" id="file-max" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFile(event,'max')" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
+        <div class="upload-text" id="txt-max">ECG pendant la procédure EP (pacing atrial)</div>
+        <div class="upload-hint" style="color:#1e2d45">Gold standard pour le ML</div>
+        <img id="prev-max" style="display:none;max-height:90px;max-width:100%;border-radius:6px;object-fit:contain" alt="">
+      </div>
+      <div id="name-max" class="file-ok" style="display:none"></div>
+    </div>
+
+    <div class="btn-right">
+      <button class="btn btn-primary" id="btn-next0" disabled onclick="goTo(1)">
+        ANALYSER AVEC CLAUDE →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 1: CLAUDE ANALYSIS -->
+<div id="step-1" class="panel" style="display:none">
+  <div class="g2">
+    <div>
+      <div class="card-title">ECG SINUSAL</div>
+      <div class="ecg-bg" style="border:1px solid var(--border);border-radius:8px;padding:8px;min-height:120px;display:flex;align-items:center;justify-content:center">
+        <img id="annot-prev-sin" style="max-width:100%;border-radius:4px;object-fit:contain" alt="">
+      </div>
+      <div id="max-section" style="display:none;margin-top:12px">
+        <div style="font-size:9px;color:var(--green);letter-spacing:0.1em;margin-bottom:6px">✓ PRÉ-EXCITATION MAXIMALE DISPONIBLE</div>
+        <div class="ecg-bg" style="border:1px solid #0f2d1a;border-radius:8px;padding:8px">
+          <img id="annot-prev-max" style="max-width:100%;border-radius:4px;object-fit:contain" alt="">
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="claude-panel" style="margin-top:0">
+        <div class="claude-header">
+          <div>
+            <div class="claude-title">CLAUDE ANALYSE L'ECG</div>
+            <div class="claude-sub">Extraction automatique des mesures par vision IA</div>
+          </div>
+          <button class="btn btn-claude" id="btn-analyze-claude" onclick="analyzeWithClaude()">
+            ANALYSER →
+          </button>
+        </div>
+        <div id="claude-analysis-output" class="claude-placeholder">
+          Cliquer sur "Analyser" pour que Claude extraie automatiquement les mesures de l'ECG.
+        </div>
+      </div>
+
+      <div>
+        <div class="card-title">MESURES EXTRAITES <span class="tag-auto">AUTO</span></div>
+        <div class="g4" style="margin-bottom:12px">
+          <div class="field">
+            <div class="field-label">PR INTERVAL</div>
+            <div class="inp-wrap"><input type="number" id="inp-pr" placeholder="—"><span class="inp-unit">ms</span></div>
+            <div class="field-hint">le plus long · &lt;120=WPW</div>
+          </div>
+          <div class="field">
+            <div class="field-label">QRS TOTAL</div>
+            <div class="inp-wrap"><input type="number" id="inp-qrs" placeholder="—"><span class="inp-unit">ms</span></div>
+            <div class="field-hint">le plus large</div>
+          </div>
+          <div class="field">
+            <div class="field-label">ONDE DELTA</div>
+            <div class="inp-wrap"><input type="number" id="inp-delta" placeholder="—"><span class="inp-unit">ms</span></div>
+            <div class="field-hint">début → fin slurring</div>
+          </div>
+          <div class="field">
+            <div class="field-label">AMPLITUDE Δ</div>
+            <div class="inp-wrap"><input type="number" id="inp-amp" placeholder="—" step="0.1"><span class="inp-unit">mV</span></div>
+            <div class="field-hint">delta la plus ample</div>
+          </div>
+        </div>
+
+        <div class="card-title" style="margin-top:14px">POLARITÉS PAR DÉRIVATION <span class="tag-auto">AUTO</span></div>
+        <div class="leads-grid" id="leads-grid"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="goTo(0)">← RETOUR</button>
+        <button class="btn btn-primary" onclick="goTo(2)">VÉRIFIER →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 2: VERIFICATION + GOLD STANDARD -->
+<div id="step-2" class="panel" style="display:none">
+  <div class="g2">
+    <div>
+      <div class="card-title">LOCALISATION GOLD STANDARD</div>
+      <p style="font-size:11px;color:var(--muted2);margin-bottom:14px;line-height:1.7">Localisation confirmée par ablation — enrichit la base de données pour le ML.</p>
+
+      <div class="field" style="margin-bottom:14px">
+        <div class="field-label">DESCRIPTION EP (texte libre)</div>
+        <div class="inp-wrap"><input type="text" id="inp-loc-text" placeholder="ex: faisceau latéral gauche..." style="padding-right:10px"></div>
+      </div>
+
+      <div style="font-size:9px;color:var(--muted);letter-spacing:0.1em;margin-bottom:8px">OU SÉLECTIONNER SUR L'ANNEAU</div>
+      <div class="annulus-container"><svg id="annulus-select" viewBox="0 0 320 320"></svg></div>
+      <div id="loc-badge" style="display:none;margin-top:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px">
+        <div style="font-size:9px;color:var(--muted)">SÉLECTIONNÉ</div>
+        <div id="loc-badge-val" style="font-size:13px;color:var(--accent2);margin-top:2px"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;justify-content:space-between">
+      <div>
+        <div class="card-title">RÉCAPITULATIF</div>
+        <div class="card" id="recap"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:20px">
+        <button class="btn btn-primary" id="btn-run" onclick="runResult()">CALCULER LE RÉSULTAT →</button>
+        <button class="btn btn-ghost" onclick="goTo(1)">← RETOUR</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 3: RESULT -->
+<div id="step-3" class="panel" style="display:none">
+  <div class="g13">
+    <div class="card" style="display:flex;flex-direction:column;align-items:center;gap:14px">
+      <div class="card-title" style="text-align:center">SCORE PRÉ-EXCITATION</div>
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="54" fill="none" stroke="#1e2d45" stroke-width="8"/>
+          <circle id="gauge-arc" cx="60" cy="60" r="54" fill="none" stroke="#3b82f6" stroke-width="8"
+            stroke-linecap="round" transform="rotate(-90 60 60)"
+            style="transition:stroke-dashoffset 1.2s ease,stroke 0.5s ease"/>
+          <text id="gauge-num" x="60" y="55" text-anchor="middle" fill="#f1f5f9" font-size="22" font-family="'DM Mono',monospace" font-weight="500">0</text>
+          <text id="gauge-unit" x="60" y="71" text-anchor="middle" fill="#3b82f6" font-size="9" font-family="'DM Mono',monospace">/100</text>
+        </svg>
+        <div class="gauge-label" id="gauge-label">—</div>
+        <div class="gauge-sub" id="gauge-sub">—</div>
+      </div>
+      <div id="score-details" style="font-size:10px;color:var(--muted2);line-height:2;width:100%"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">LOCALISATION ALGORITHMIQUE</div>
+      <div id="result-content">
+        <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+          <div class="annulus-container" style="flex:0 0 auto"><svg id="annulus-result" viewBox="0 0 320 320" style="max-width:220px"></svg></div>
+          <div style="flex:1;min-width:160px">
+            <div class="loc-name" id="res-loc-name">—</div>
+            <div class="conf-row">
+              <div class="conf-track"><div class="conf-fill" id="conf-fill" style="width:0%"></div></div>
+              <span style="font-size:12px;color:var(--accent2)" id="conf-pct">0%</span>
+            </div>
+            <div id="result-alerts"></div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="font-size:9px;color:var(--purple);letter-spacing:0.1em;margin-bottom:6px">ML MODEL v1 · <span style="color:var(--muted2)">entraîné sur 12 cas · 36 annotés</span></div>
+        <div id="ml-predictions" style="font-size:10px;color:var(--muted2)">—</div>
+      </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Claude deep analysis -->
+  <div class="claude-panel">
+    <div class="claude-header">
+      <div>
+        <div class="claude-title">ANALYSE APPROFONDIE · CLAUDE EP</div>
+        <div class="claude-sub">Interprétation clinique détaillée et recommandations</div>
+      </div>
+      <button class="btn btn-claude" id="btn-deep" onclick="deepAnalysis()">ANALYSE COMPLÈTE →</button>
+    </div>
+    <div id="deep-output" class="claude-placeholder">
+      Cliquer pour une analyse EP approfondie — raisonnement clinique, diagnostics différentiels, recommandations.
+    </div>
+  </div>
+
+  <!-- Export -->
+  <div class="export-row">
+    <button class="btn btn-ghost" onclick="resetAll()">NOUVEAU CAS</button>
+    <div style="display:flex;gap:10px;align-items:center">
+      <div style="font-size:10px;color:var(--muted2)">Sauvegarder dans OneDrive :</div>
+      <button class="btn btn-green" onclick="exportExcel()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+        SAUVEGARDER DANS SHEETS
+      </button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ===========================
+// API KEY MANAGEMENT
+// ===========================
+function saveKey(val) {
+  if (val) localStorage.setItem('wpw_api_key', val);
+  const st = document.getElementById('key-status');
+  const inp = document.getElementById('api-key-input');
+  if (val && val.length > 20) {
+    st.textContent = '✓ Clé configurée';
+    st.style.color = '#22c55e';
+    inp.style.borderColor = '#22c55e';
+  } else if (val && val.length > 0) {
+    st.textContent = '⚠ Clé trop courte';
+    st.style.color = '#f59e0b';
+    inp.style.borderColor = '#f59e0b';
+  } else {
+    st.textContent = 'Non configurée';
+    st.style.color = '#374151';
+    inp.style.borderColor = '#1e2d45';
+  }
+}
+
+function toggleKey() {
+  const inp = document.getElementById('api-key-input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function getKey() {
+  return localStorage.getItem('wpw_api_key') || '';
+}
+
+// Restore key on load
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('wpw_api_key');
+  if (saved) {
+    const inp = document.getElementById('api-key-input');
+    inp.value = saved;
+    saveKey(saved);
+  }
+});
+
+// ===========================
+// LOCATIONS — 14 positions
+// ===========================
+const LOCS = [
+  {code:"ALL", label:"Antéro-latéral gauche",     side:"left",   angle:62 },
+  {code:"LL",  label:"Latéral gauche",            side:"left",   angle:90 },
+  {code:"PLL", label:"Postéro-latéral gauche",    side:"left",   angle:118},
+  {code:"PL",  label:"Postérieur gauche",          side:"left",   angle:148},
+  {code:"PSL", label:"Postéro-septal gauche",      side:"left",   angle:168},
+  {code:"PS",  label:"Postéro-septal",             side:"septal", angle:180},
+  {code:"PSR", label:"Postéro-septal droit",       side:"right",  angle:192},
+  {code:"PRD", label:"Postérieur droit",           side:"right",  angle:212},
+  {code:"PLR", label:"Postéro-latéral droit",      side:"right",  angle:242},
+  {code:"LR",  label:"Latéral droit",              side:"right",  angle:270},
+  {code:"AR",  label:"Antérieur droit",            side:"right",  angle:298},
+  {code:"ASR", label:"Antéro-septal droit",        side:"right",  angle:328},
+  {code:"PHD", label:"Para-Hissien droit",         side:"septal", angle:348},
+  {code:"AS",  label:"Antéro-septal",              side:"septal", angle:0  },
+  {code:"PHG", label:"Para-Hissien gauche",        side:"septal", angle:12 },
+];
+
+const LEADS = ["I","II","III","aVR","aVL","aVF","V1","V2","V3","V4","V5","V6"];
+const POLS = {};
+let selLoc = null;
+let sinFile = null, maxFile = null;
+let sinB64 = null, maxB64 = null;
+let currentStep = 0;
+let lastResult = null;
+let autoFilled = {};
+
+// ===========================
+// NAVIGATION
+// ===========================
+function goTo(n) {
+  document.querySelectorAll('.panel').forEach((p,i) => p.style.display = i===n?'block':'none');
+  document.querySelectorAll('.step').forEach((s,i) => {
+    s.classList.toggle('active', i===n);
+    s.classList.toggle('done', i<n);
+  });
+  currentStep = n;
+  if (n===2) buildRecap();
+}
+
+// ===========================
+// FILE HANDLING
+// ===========================
+function handleFile(e, type) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const url = ev.target.result;
+    if (type==='sin') {
+      sinFile = file; sinB64 = url;
+      const img = document.getElementById('prev-sin');
+      if (file.type !== 'application/pdf') { img.src = url; img.style.display = 'block'; }
+      document.getElementById('icon-sin').style.display = 'none';
+      document.getElementById('txt-sin').style.display = 'none';
+      document.getElementById('zone-sin').classList.add('has-file');
+      const n = document.getElementById('name-sin');
+      n.textContent = '✓ ' + file.name; n.style.display = 'block';
+      document.getElementById('btn-next0').disabled = false;
+      document.getElementById('annot-prev-sin').src = url;
+    } else {
+      maxFile = file; maxB64 = url;
+      const img = document.getElementById('prev-max');
+      if (file.type !== 'application/pdf') { img.src = url; img.style.display = 'block'; }
+      document.getElementById('txt-max').style.display = 'none';
+      document.getElementById('zone-max').classList.add('has-max');
+      const n = document.getElementById('name-max');
+      n.textContent = '✓ ' + file.name; n.style.display = 'block';
+      document.getElementById('max-section').style.display = 'block';
+      document.getElementById('annot-prev-max').src = url;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+// ===========================
+// LEAD POLARITY GRID
+// ===========================
+function buildLeadsGrid(prefill) {
+  const grid = document.getElementById('leads-grid');
+  grid.innerHTML = '';
+  LEADS.forEach(lead => {
+    const col = document.createElement('div');
+    col.className = 'lead-col';
+    col.innerHTML = `<div class="lead-name">${lead}</div>`;
+    const btns = document.createElement('div');
+    btns.className = 'lead-btns';
+    ['+','-','±','iso'].forEach(opt => {
+      const b = document.createElement('button');
+      b.className = 'pb';
+      b.textContent = opt;
+      const cls = {'+':'pos','-':'neg','±':'mix','iso':'iso'}[opt];
+      if (prefill && prefill[lead] === opt) { b.classList.add(cls); POLS[lead] = opt; }
+      b.onclick = () => {
+        if (POLS[lead] === opt) { delete POLS[lead]; b.className = 'pb'; }
+        else {
+          POLS[lead] = opt;
+          btns.querySelectorAll('.pb').forEach(x => x.className = 'pb');
+          b.classList.add(cls);
+        }
+      };
+      btns.appendChild(b);
+    });
+    col.appendChild(btns);
+    grid.appendChild(col);
+  });
+}
+buildLeadsGrid({});
+
+// ===========================
+// ANNULUS SVG
+// ===========================
+function buildAnnulus(svgId, interactive, selectedCode, clickCallback) {
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  const ns = 'http://www.w3.org/2000/svg';
+  const cx=160, cy=160, r=108;
+
+  const mk = (tag, attrs) => {
+    const el = document.createElementNS(ns, tag);
+    Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k,v));
+    return el;
+  };
+
+  const defs = mk('defs', {});
+  defs.innerHTML = `<radialGradient id="rg${svgId}" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#111827"/><stop offset="100%" stop-color="#070b12"/>
+  </radialGradient>`;
+  svg.appendChild(defs);
+
+  svg.appendChild(mk('circle',{cx,cy,r:r+20,fill:'none',stroke:'#1e2d45','stroke-width':'1','stroke-dasharray':'3 5',opacity:'0.35'}));
+  svg.appendChild(mk('circle',{cx,cy,r,fill:`url(#rg${svgId})`,stroke:'#1e2d45','stroke-width':'1.5'}));
+  svg.appendChild(mk('circle',{cx,cy,r:r-30,fill:'none',stroke:'#1e2d45','stroke-width':'1',opacity:'0.4'}));
+  svg.appendChild(mk('line',{x1:cx,y1:cy-r+8,x2:cx,y2:cy+r-8,stroke:'#1e2d45','stroke-width':'1','stroke-dasharray':'3 3',opacity:'0.5'}));
+
+  const addTxt = (x,y,txt,fill,fs,op='1') => {
+    const t = mk('text',{x,y,'text-anchor':'middle',fill,'font-size':fs,'font-family':"'DM Mono',monospace",opacity:op});
+    t.textContent = txt; svg.appendChild(t);
+  };
+  addTxt(cx+r-14,cy+4,'G','#60a5fa',11,'0.7');
+  addTxt(cx-r+14,cy+4,'D','#f87171',11,'0.7');
+  addTxt(cx,cy-r+16,'ANT','#94a3b8',8,'0.45');
+  addTxt(cx,cy+r-4,'POST','#94a3b8',8,'0.45');
+  addTxt(cx+r-14,cy+16,'mitral','#60a5fa',7,'0.4');
+  addTxt(cx-r+14,cy+16,'tricuspide','#f87171',7,'0.4');
+
+  LOCS.forEach(loc => {
+    const rad = (loc.angle - 90) * Math.PI / 180;
+    const x = cx + r * Math.cos(rad);
+    const y = cy + r * Math.sin(rad);
+    const isSel = loc.code === selectedCode;
+    const color = loc.side==='left'?'#60a5fa':loc.side==='right'?'#f87171':'#fbbf24';
+
+    const g = mk('g', {});
+    if (interactive) g.style.cursor = 'pointer';
+
+    if (isSel) {
+      const rip = mk('circle',{cx:x,cy:y,r:'12',fill:'none',stroke:color,'stroke-width':'1.5',opacity:'0.25'});
+      rip.innerHTML = `<animate attributeName="r" values="12;22;12" dur="2s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.25;0;0.25" dur="2s" repeatCount="indefinite"/>`;
+      svg.appendChild(rip);
+    }
+
+    const c = mk('circle',{cx:x,cy:y,r:isSel?'11':'8',
+      fill:isSel?color:'#07090f',stroke:color,
+      'stroke-width':isSel?'2':'1.5',opacity:isSel?'1':'0.65'});
+    g.appendChild(c);
+
+    const t = mk('text',{x,y:''+( y+4),'text-anchor':'middle',
+      fill:isSel?'#fff':color,'font-size':'7','font-family':"'DM Mono',monospace",
+      'font-weight':isSel?'600':'400'});
+    t.textContent = loc.code;
+    g.appendChild(t);
+
+    if (interactive) {
+      g.addEventListener('click', () => {
+        if (clickCallback) {
+          clickCallback(loc.code);
+        } else {
+          selLoc = loc.code;
+          buildAnnulus(svgId, true, loc.code);
+          document.getElementById('loc-badge').style.display = 'block';
+          document.getElementById('loc-badge-val').textContent = loc.label;
+        }
+      });
+    }
+    svg.appendChild(g);
+  });
+}
+
+buildAnnulus('annulus-select', true, null);
+
+// ===========================
+// CLAUDE VISION ANALYSIS
+// ===========================
+async function analyzeWithClaude() {
+  const btn = document.getElementById('btn-analyze-claude');
+  const out = document.getElementById('claude-analysis-output');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> ANALYSE...';
+  out.className = 'claude-placeholder';
+  out.textContent = 'Claude analyse l\'ECG en cours...';
+
+  const imageData = sinB64;
+  const isImg = sinFile && sinFile.type !== 'application/pdf';
+
+  const textPrompt = `Tu es un électrophysiologiste expert en syndrome de Wolff-Parkinson-White (WPW).
+Analyse cet ECG 12 dérivations avec une précision maximale selon ces règles EP strictes.
+
+RÈGLES DE MESURE :
+1. PR interval : mesure sur la dérivation où il est LE PLUS LONG (souvent DII ou V5). Dans le WPW le PR est court (<120ms).
+2. QRS total : mesure sur la dérivation où il est LE PLUS LARGE. ATTENTION dans le WPW avec pré-excitation dominante le QRS peut être très large (140-200ms) car il inclut onde delta + dépolarisation ventriculaire normale. Mesure jusqu'à la fin complète de la déflexion ventriculaire, juste avant le segment ST. Ne pas s'arrêter à mi-chemin.
+   CALIBRATION FIXE : vitesse papier 25mm/s → 1 petit carré (1mm) = 40ms, 1 grand carré (5mm) = 200ms. Un QRS de 4 petits carrés = 160ms.
+3. Onde delta : portion initiale du QRS avec montée lente (slurring). Mesure du début du QRS jusqu'au point d'inflexion où la pente redevient abrupte.
+4. Amplitude delta : hauteur maximale de l'onde delta depuis la ligne isoélectrique, sur la dérivation la plus ample.
+   CALIBRATION FIXE : tous les ECG sont à 10mm/mV et 25mm/s. Mesure l'amplitude en mm sur l'image puis divise par 10 pour obtenir les mV. Une onde delta de 8mm = 0.8mV, 15mm = 1.5mV, 20mm = 2.0mV.
+   IMPORTANT : dans le WPW avec pré-excitation dominante, l'onde delta occupe presque tout le QRS. L'amplitude delta = hauteur totale de l'onde R si le QRS est entièrement préexcité. Ne pas sous-estimer en ne mesurant que le slurring initial.
+
+RÈGLES DE POLARITÉ (CRITIQUE) :
+- Polarité delta = direction de la PREMIÈRE déflexion au tout début du QRS (le slurring initial)
+- Début par montée progressive = delta POSITIVE (+)
+- Début par descente progressive = delta NÉGATIVE (-)
+- Début plat/équiphasique = iso
+- Déflexion positive puis négative similaires = ±
+- PIÈGE 1 : En WPW para-Hissien/septal, V1 peut avoir une onde R initiale positive même si le QRS global semble négatif. Analyser la PREMIÈRE déflexion uniquement.
+- PIÈGE 2 : Ne pas confondre onde P avec début du QRS (PR très court en WPW).
+- PIÈGE 3 : Un QRS très large avec onde R dominante en V1-V2 = delta positive, pas négative.
+- PIÈGE 4 : Ne jamais laisser de dérivation à null si la polarité est visible. Tu DOIS donner une polarité pour chaque dérivation. Parcours systématiquement I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6 une par une sans en sauter.
+- PIÈGE 5 : Dans les dérivations inférieures (II, III, aVF), si le QRS commence par une déflexion vers le bas avant de remonter = delta NÉGATIVE. C'est fréquent dans les faisceaux postérieurs et postéro-latéraux gauches.
+- PIÈGE 6 : La polarité dans les précordiales (V1-V6) doit être cohérente avec une progression logique. Si V1-V3 sont positives, V4-V6 le sont généralement aussi pour un faisceau gauche.
+
+OBLIGATION ABSOLUE : toutes les 12 dérivations doivent avoir une valeur (+, -, ±, iso). Ne jamais mettre null.
+Procède OBLIGATOIREMENT dans cet ordre exact : I → II → III → aVR → aVL → aVF → V1 → V2 → V3 → V4 → V5 → V6. Ne passe pas à la suivante sans avoir déterminé la polarité de la précédente.
+Pour chaque dérivation : regarde UNIQUEMENT les premiers mm du QRS (le slurring). Ignore le reste du QRS. Si le début monte lentement → +. Si le début descend lentement → -. Si c'est plat ou équiphasique → iso.
+AMPLITUDE DELTA : c'est la hauteur UNIQUEMENT de la partie en pente douce initiale, mesurée depuis la ligne isoélectrique jusqu'au point d'inflexion où la pente s'accélère. PAS la hauteur totale de l'onde R. Sur un ECG avec grande onde R, l'amplitude delta peut être très faible (0,2-0,5 mV) même si l'onde R totale est grande (1,5-2 mV).
+
+Réponds UNIQUEMENT en JSON valide sans texte avant ou après :
+{
+  "pr_ms": null,
+  "qrs_ms": null,
+  "delta_ms": null,
+  "amplitude_delta_mv": null,
+  "polarites": {
+    "I": null, "II": null, "III": null, "aVR": null, "aVL": null, "aVF": null,
+    "V1": null, "V2": null, "V3": null, "V4": null, "V5": null, "V6": null
+  },
+  "commentaire": "observation clinique en français"
+}`;
+
+  try {
+    let messages;
+    if (isImg) {
+      const base64 = imageData.split(',')[1];
+      const mediaType = sinFile.type;
+      messages = [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: textPrompt }
+        ]
+      }];
+    } else {
+      messages = [{ role: 'user', content: textPrompt + '\n\n(Note: Image PDF non lisible directement, veuillez fournir une estimation basée sur les données disponibles)' }];
+    }
+
+    const apiKey = getKey();
+    if (!apiKey) { out.textContent = '⚠ Entrez votre clé API Claude en haut de la page.'; btn.disabled=false; btn.innerHTML='ANALYSER →'; return; }
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages })
+    });
+
+    const data = await res.json();
+    const text = data.content?.map(b => b.text||'').join('') || '';
+
+    // Parse JSON
+    const clean = text.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+
+    // Fill inputs
+    if (parsed.pr_ms) { document.getElementById('inp-pr').value = parsed.pr_ms; document.getElementById('inp-pr').classList.add('inp-auto'); }
+    if (parsed.qrs_ms) { document.getElementById('inp-qrs').value = parsed.qrs_ms; document.getElementById('inp-qrs').classList.add('inp-auto'); }
+    if (parsed.delta_ms) { document.getElementById('inp-delta').value = parsed.delta_ms; document.getElementById('inp-delta').classList.add('inp-auto'); }
+    if (parsed.amplitude_delta_mv) { document.getElementById('inp-amp').value = parsed.amplitude_delta_mv; document.getElementById('inp-amp').classList.add('inp-auto'); }
+
+    // Fill polarities
+    if (parsed.polarites) {
+      Object.keys(POLS).forEach(k => delete POLS[k]);
+      buildLeadsGrid(parsed.polarites);
+    }
+
+    autoFilled = parsed;
+
+    out.className = 'claude-output';
+    out.innerHTML = `<span style="color:var(--green)">✓ Mesures extraites automatiquement</span>\n\n${parsed.commentaire || ''}`;
+
+  } catch(e) {
+    out.className = 'claude-output';
+    out.textContent = 'Erreur lors de l\'analyse. Vérifiez votre connexion et réessayez.\n\nDétail : ' + e.message;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'RÉANALYSER →';
+}
+
+// ===========================
+// SCORE CALCULATION
+// ===========================
+function computeScore(pr, delta, qrs, amp) {
+  let s = 0;
+  if (pr > 0) s += Math.max(0, Math.min(30, (200 - pr) / 80 * 30));
+  if (delta > 0 && qrs > 0) s += Math.min(1, delta / qrs) * 40;
+  if (amp > 0) s += Math.min(20, amp * 20);
+  return Math.round(Math.min(100, Math.max(0, s)));
+}
+
+// ===========================
+// LOCALIZATION ALGORITHM
+// ===========================
+function localize(pols) {
+  const v1 = pols['V1'], v2 = pols['V2'];
+  const inf = [pols['II'], pols['III'], pols['aVF']];
+  const lat = [pols['I'], pols['aVL']];
+  const allNegInf = inf.every(v => v==='-');
+  const allPosInf = inf.every(v => v==='+');
+  const negLat = lat.some(v => v==='-');
+  const posLat = lat.every(v => v==='+');
+
+  if (v1==='+') {
+    if (negLat && allNegInf) return {code:'PL', confidence:82};
+    if (negLat) return {code:'LL', confidence:86};
+    if (allNegInf) return {code:'PSL', confidence:75};
+    if (allPosInf && posLat) return {code:'LL', confidence:74};
+    return {code:'PLL', confidence:67};
+  } else if (v1==='-') {
+    if (v2==='+') {
+      if (allNegInf) return {code:'PSR', confidence:78};
+      return {code:'PRD', confidence:68};
+    }
+    if (allNegInf) return {code:'PSR', confidence:72};
+    if (allPosInf) return {code:'AR', confidence:74};
+    if (negLat) return {code:'LR', confidence:70};
+    return {code:'PLR', confidence:63};
+  } else if (v1==='iso' || v1==='±') {
+    if (pols['aVR']==='+') return {code:'PHD', confidence:68};
+    if (allNegInf) return {code:'PS', confidence:72};
+    if (allPosInf) return {code:'PHG', confidence:65};
+    return {code:'AS', confidence:60};
+  }
+  return null;
+}
+
+// ===========================
+// RECAP
+// ===========================
+function buildRecap() {
+  const pr = document.getElementById('inp-pr').value;
+  const qrs = document.getElementById('inp-qrs').value;
+  const delta = document.getElementById('inp-delta').value;
+  const polCount = Object.keys(POLS).length;
+  const items = [
+    {k:'ECG sinusal', v:sinFile?.name},
+    {k:'ECG pré-excitation max', v:maxFile?.name||'Non fourni'},
+    {k:'PR interval', v:pr?pr+' ms':null},
+    {k:'QRS total', v:qrs?qrs+' ms':null},
+    {k:'Onde delta', v:delta?delta+' ms':null},
+    {k:'Polarités renseignées', v:polCount+'/12', ok:polCount>=6},
+    {k:'Gold standard', v:selLoc?LOCS.find(l=>l.code===selLoc)?.label:document.getElementById('inp-loc-text').value||null},
+  ];
+  document.getElementById('recap').innerHTML = items.map(item => `
+    <div class="recap-row">
+      <span class="recap-k">${item.k}</span>
+      <span class="recap-v ${!item.v?'empty':''}">${item.v||'—'}</span>
+    </div>`).join('');
+}
+
+// ===========================
+// RUN RESULT
+// ===========================
+function runResult() {
+  const pr = parseFloat(document.getElementById('inp-pr').value)||0;
+  const qrs = parseFloat(document.getElementById('inp-qrs').value)||0;
+  const delta = parseFloat(document.getElementById('inp-delta').value)||0;
+  const amp = parseFloat(document.getElementById('inp-amp').value)||0;
+  const score = computeScore(pr, delta, qrs, amp);
+  const locResult = localize(POLS);
+  const ratio = (delta && qrs) ? Math.round(delta/qrs*100)/100 : 0;
+  const mlProbs = mlPredict(pr, qrs, delta, amp, ratio, score, POLS);
+  lastResult = {score, locResult, pr, qrs, delta, amp, mlProbs};
+  goTo(3);
+  renderResult(lastResult);
+}
+
+// ===========================
+// RENDER GAUGE
+// ===========================
+function renderGauge(score) {
+  const color = score>=80?'#22c55e':score>=50?'#f59e0b':score>=20?'#f97316':'#ef4444';
+  const label = score>=80?'Dominant':score>=50?'Partiel':score>=20?'Subtil':'Minimal';
+  const sub = score>=80?'Très fiable':score>=50?'Probable':score>=20?'Incertain':'Non concluant';
+  const circ = 2*Math.PI*54;
+  const offset = circ - (score/100)*circ;
+  const arc = document.getElementById('gauge-arc');
+  arc.setAttribute('stroke-dasharray', circ);
+  arc.setAttribute('stroke-dashoffset', offset);
+  arc.setAttribute('stroke', color);
+  document.getElementById('gauge-num').textContent = score;
+  document.getElementById('gauge-unit').setAttribute('fill', color);
+  document.getElementById('gauge-label').textContent = label;
+  document.getElementById('gauge-label').style.color = color;
+  document.getElementById('gauge-sub').textContent = sub;
+}
+
+// ===========================
+// RENDER RESULT
+// ===========================
+function renderResult({score, locResult, pr, qrs, delta, amp}) {
+  renderGauge(score);
+
+  let details = '';
+  if (pr) details += `PR : <span style="color:#f1f5f9">${pr} ms</span><br>`;
+  if (qrs) details += `QRS : <span style="color:#f1f5f9">${qrs} ms</span><br>`;
+  if (delta) details += `Delta : <span style="color:#f1f5f9">${delta} ms</span><br>`;
+  if (delta && qrs) details += `Ratio Δ/QRS : <span style="color:#60a5fa">${Math.round(delta/qrs*100)}%</span>`;
+  document.getElementById('score-details').innerHTML = details;
+
+  if (locResult) {
+    const loc = LOCS.find(l=>l.code===locResult.code);
+    document.getElementById('res-loc-name').textContent = loc?.label || locResult.code;
+    document.getElementById('conf-fill').style.width = locResult.confidence + '%';
+    document.getElementById('conf-pct').textContent = locResult.confidence + '%';
+    buildAnnulus('annulus-result', false, locResult.code);
+
+    // ML predictions
+    if (lastResult.mlProbs && lastResult.mlProbs.length > 0) {
+      const mlDiv = document.getElementById('ml-predictions');
+      if (mlDiv) {
+        const top3 = lastResult.mlProbs.slice(0,3);
+        mlDiv.innerHTML = top3.map(function(p,i) {
+          const pct = Math.round(p.prob*100);
+          const color = i===0?'var(--purple)':i===1?'#6366f1':'#374151';
+          return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">' +
+            '<span style="font-size:9px;color:'+color+';width:32px">'+p.code+'</span>' +
+            '<div style="flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden">' +
+            '<div style="width:'+pct+'%;height:100%;background:'+color+';border-radius:2px"></div></div>' +
+            '<span style="font-size:9px;color:'+color+';width:28px;text-align:right">'+pct+'%</span></div>';
+        }).join('');
+      }
+    }
+
+    let alerts = '';
+    if (selLoc) {
+      const match = selLoc === locResult.code;
+      alerts += `<div class="alert ${match?'alert-g':'alert-r'}">
+        ${match?'✓ CONCORDANCE GOLD STANDARD':'✗ DISCORDANCE GOLD STANDARD'}
+        <div class="alert-body">Confirmé : ${LOCS.find(l=>l.code===selLoc)?.label||selLoc}</div>
+      </div>`;
+    }
+    if (score < 50) alerts += `<div class="alert alert-y">⚠ PRÉ-EXCITATION SUBTILE
+      <div class="alert-body">Fiabilité réduite — envisager ECG post-effort, adénosine ou pacing atrial</div>
+    </div>`;
+    if (maxFile) alerts += `<div style="font-size:10px;color:var(--green);margin-top:4px;letter-spacing:0.06em">✓ ECG pré-excitation maximale fourni → enrichira le ML</div>`;
+    document.getElementById('result-alerts').innerHTML = alerts;
+  } else {
+    document.getElementById('res-loc-name').textContent = 'Indéterminée';
+    document.getElementById('conf-fill').style.width = '0%';
+    document.getElementById('conf-pct').textContent = '—';
+    document.getElementById('result-alerts').innerHTML = `<div class="alert alert-y">Polarités insuffisantes pour localiser. Retourner à l'annotation.</div>`;
+    buildAnnulus('annulus-result', false, null);
+  }
+}
+
+// ===========================
+// CLAUDE DEEP ANALYSIS
+// ===========================
+async function deepAnalysis() {
+  const btn = document.getElementById('btn-deep');
+  const out = document.getElementById('deep-output');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> ANALYSE...';
+  out.className = 'claude-placeholder';
+  out.textContent = 'Analyse approfondie en cours...';
+
+  const {score, locResult, pr, qrs, delta, amp} = lastResult;
+  const polDesc = Object.entries(POLS).map(([l,v])=>`${l}:${v}`).join(', ');
+  const locLabel = locResult ? LOCS.find(l=>l.code===locResult.code)?.label : 'indéterminée';
+
+  const prompt = `Tu es un électrophysiologiste expert en syndrome de Wolff-Parkinson-White.
+
+Données ECG sinusal :
+- PR interval : ${pr||'non mesuré'} ms (dérivation la plus longue)
+- QRS total : ${qrs||'non mesuré'} ms (dérivation la plus large)
+- Durée onde delta : ${delta||'non mesuré'} ms
+- Amplitude delta maximale : ${amp||'non mesuré'} mV
+- Score de pré-excitation calculé : ${score}/100
+- Polarités des ondes delta : ${polDesc||'non renseignées'}
+- ECG pré-excitation maximale disponible : ${maxFile?'OUI':'NON'}
+- Localisation suggérée par l'algorithme : ${locLabel} (confiance ${locResult?.confidence||0}%)
+- Gold standard (ablation) : ${selLoc?LOCS.find(l=>l.code===selLoc)?.label:'non renseigné'}
+
+Donne une analyse structurée en 3 parties :
+
+1. INTERPRÉTATION DU SCORE DE PRÉ-EXCITATION
+Explique ce que le score signifie pour la fiabilité de la localisation et pourquoi.
+
+2. LOCALISATION ET RAISONNEMENT EP
+Analyse dérivation par dérivation. Confirme ou nuance la localisation algorithmique. Mentionne les diagnostics différentiels si pertinent. Explique le raisonnement vecteur par vecteur.
+
+3. RECOMMANDATIONS CLINIQUES
+Si pré-excitation subtile : manœuvres complémentaires utiles. Précautions procédurales selon la localisation (ex: risque BAV si para-Hissien). Conseils pour l'ablation.
+
+Réponds en français, sois précis et clinique.`;
+
+  try {
+    let messages;
+    if (sinFile && sinFile.type !== 'application/pdf' && sinB64) {
+      const base64 = sinB64.split(',')[1];
+      messages = [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: sinFile.type, data: base64 } },
+          { type: 'text', text: prompt }
+        ]
+      }];
+    } else {
+      messages = [{ role: 'user', content: prompt }];
+    }
+
+    const apiKey2 = getKey();
+    if (!apiKey2) { out.textContent = '⚠ Entrez votre clé API Claude en haut de la page.'; btn.disabled=false; btn.innerHTML='ANALYSE COMPLÈTE →'; return; }
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey2, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1200, messages })
+    });
+    const data = await res.json();
+    const text = data.content?.map(b=>b.text||'').join('') || 'Erreur.';
+    out.className = 'claude-output';
+    out.innerHTML = formatText(text);
+  } catch(e) {
+    out.className = 'claude-output';
+    out.textContent = 'Erreur de connexion. ' + e.message;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'RÉANALYSER →';
+}
+
+function formatText(text) {
+  return text.split('\n').map(line => {
+    if (/^[0-9]+\./.test(line)) return `<div style="color:var(--purple);font-weight:600;margin-top:14px;margin-bottom:3px">${line}</div>`;
+    if (line === line.toUpperCase() && line.trim().length > 4) return `<div style="color:var(--accent2);font-size:10px;letter-spacing:0.1em;margin-top:12px;margin-bottom:3px">${line}</div>`;
+    return `<div>${line}</div>`;
+  }).join('');
+}
+
+// ===========================
+// EXPORT — GOOGLE SHEETS ML-READY
+// ===========================
+
+function encPol(v) {
+  return {'+':1, '-':-1, '±':0, 'iso':0, '':null, undefined:null}[v] ?? null;
+}
+function encLoc(code) {
+  const map = {ALL:0,LL:1,PLL:2,PL:3,PSL:4,PS:5,PSR:6,PRD:7,PLR:8,LR:9,AR:10,ASR:11,PHD:12,AS:13,PHG:14};
+  return map[code] ?? null;
+}
+function encSide(code) {
+  const loc = LOCS.find(l=>l.code===code);
+  return loc ? {left:0,septal:1,right:2}[loc.side] ?? null : null;
+}
+
+async function exportExcel() {
+  if (!lastResult) return;
+  const {score, locResult, pr, qrs, delta, amp} = lastResult;
+  const goldLabel = selLoc ? LOCS.find(l=>l.code===selLoc)?.label : document.getElementById('inp-loc-text').value;
+  const concordance = selLoc && locResult ? (selLoc === locResult.code ? 1 : 0) : '';
+
+  const mlRow = {
+    case_id: `WPW_${new Date().toISOString().replace(/[-:T]/g,'').slice(0,14)}`,
+    date: new Date().toISOString().slice(0,10),
+    ecg_sinusal_file: sinFile?.name || '',
+    ecg_max_file: maxFile?.name || '',
+    has_max_preexcitation: maxFile ? 1 : 0,
+    pr_ms: pr || null,
+    qrs_ms: qrs || null,
+    delta_ms: delta || null,
+    amp_delta_mv: amp || null,
+    ratio_delta_qrs: (delta && qrs) ? Math.round(delta/qrs*100)/100 : null,
+    preexcitation_score: score,
+    pol_I:   encPol(POLS['I']),
+    pol_II:  encPol(POLS['II']),
+    pol_III: encPol(POLS['III']),
+    pol_aVR: encPol(POLS['aVR']),
+    pol_aVL: encPol(POLS['aVL']),
+    pol_aVF: encPol(POLS['aVF']),
+    pol_V1:  encPol(POLS['V1']),
+    pol_V2:  encPol(POLS['V2']),
+    pol_V3:  encPol(POLS['V3']),
+    pol_V4:  encPol(POLS['V4']),
+    pol_V5:  encPol(POLS['V5']),
+    pol_V6:  encPol(POLS['V6']),
+    pol_raw_I:   ({'+':'pos','-':'neg','±':'bip','iso':'iso'}[POLS['I']]||''),
+    pol_raw_II:  ({'+':'pos','-':'neg','±':'bip','iso':'iso'}[POLS['II']]||''),
+    pol_raw_III: ({'+':'pos','-':'neg','±':'bip','iso':'iso'}[POLS['III']]||''),
+    pol_raw_aVR: ({'+':'pos','-':'neg','±':'bip','iso':'iso'}[POLS['aVR']]||''),
+    pol_raw_aVL: ({'+':'pos','-':'neg','±':'bip','iso':'iso'}[POLS['aVL']]||''),
+    pol_raw_aVF: ({'+':'pos','-':'neg','±':'bip','iso':'iso'}[POLS['aVF']]||''),
+    pol_raw_V1:  ({'+':'pos','-':'neg','±':'bip','iso':'iso'}[POLS['V1']]||''),
+    pol_raw_V2:  ({'+':'pos','-':'neg','±':'bip','iso':'iso'}[POLS['V2']]||''),
+    pol_raw_V3:  ({'+':'pos','-':'neg','±':'bip','iso':'iso'}[POLS['V3']]||''),
+    pol_raw_V4:  ({'+':'pos','-':'neg','±':'bip','iso':'iso'}[POLS['V4']]||''),
+    pol_raw_V5:  ({'+':'pos','-':'neg','±':'bip','iso':'iso'}[POLS['V5']]||''),
+    pol_raw_V6:  ({'+':'pos','-':'neg','±':'bip','iso':'iso'}[POLS['V6']]||''),
+    label_code: selLoc || '',
+    label_text: goldLabel || '',
+    label_class: encLoc(selLoc),
+    label_side: encSide(selLoc),
+    label_angle: LOCS.find(l=>l.code===selLoc)?.angle ?? null,
+    algo_pred_code: locResult?.code || '',
+    algo_pred_class: encLoc(locResult?.code),
+    algo_confidence: locResult?.confidence || null,
+    algo_concordance: concordance,
+    n_leads_annotated: Object.keys(POLS).length,
+    annotation_complete: Object.keys(POLS).length >= 10 ? 1 : 0,
+    claude_auto_filled: Object.keys(autoFilled).length > 0 ? 1 : 0,
+    commentaire_claude: autoFilled?.commentaire || '',
+  };
+
+  const btn = document.querySelector('.btn-green');
+  const origHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> ENVOI...';
+
+  try {
+    const fd = new URLSearchParams(); fd.append('data', JSON.stringify(mlRow));
+    await fetch('https://script.google.com/macros/s/AKfycbzCiZPaUJHMDZN0xzm4Xi2f_y-0dSNXZEoN4-CdbewQIZlOxd7FIefCJOd200jlWn8J/exec', {
+      method: 'POST',
+      mode: 'no-cors',
+      body: fd,
+    });
+
+    btn.innerHTML = '✓ SAUVEGARDÉ DANS SHEETS';
+    btn.style.borderColor = 'var(--green)';
+    btn.style.color = 'var(--green)';
+    setTimeout(() => {
+      btn.innerHTML = origHTML;
+      btn.disabled = false;
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 3000);
+
+  } catch(e) {
+    btn.innerHTML = '⚠ ERREUR — ' + e.message;
+    btn.style.borderColor = 'var(--red)';
+    btn.style.color = 'var(--red)';
+    setTimeout(() => {
+      btn.innerHTML = origHTML;
+      btn.disabled = false;
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 4000);
+  }
+}
+// ===========================
+// ANNOTATION RAPIDE MODE
+// ===========================
+let annotMode = false;
+let annotFiles = [];
+let annotIndex = 0;
+let annotSelLoc = null;
+let annotCount = 0;
+
+function toggleMode() {
+  annotMode = !annotMode;
+  document.getElementById('annot-mode').style.display = annotMode ? 'block' : 'none';
+  document.getElementById('main-content').style.display = annotMode ? 'none' : 'block';
+  document.querySelector('.steps').style.display = annotMode ? 'none' : 'flex';
+  document.getElementById('mode-btn').textContent = annotMode ? 'MODE ANALYSE COMPLET' : 'MODE ANNOTATION RAPIDE';
+  document.getElementById('mode-btn').style.borderColor = annotMode ? 'var(--green)' : '';
+  document.getElementById('mode-btn').style.color = annotMode ? 'var(--green)' : '';
+  if (annotMode) buildAnnulus('annulus-annot', true, null, annotSelectLoc);
+}
+
+function annotSelectLoc(code) {
+  annotSelLoc = code;
+  const loc = LOCS.find(l => l.code === code);
+  document.getElementById('annot-selected').textContent = loc ? `${loc.code} — ${loc.label}` : '';
+  document.getElementById('annot-selected').style.color = '#60a5fa';
+  buildAnnulus('annulus-annot', true, code, annotSelectLoc);
+  const btn = document.getElementById('annot-save-btn');
+  btn.disabled = false;
+  btn.style.opacity = '1';
+}
+
+function loadAnnotFiles(e) {
+  annotFiles = Array.from(e.target.files);
+  annotIndex = 0;
+  annotSelLoc = null;
+  showAnnotFile();
+}
+
+function showAnnotFile() {
+  if (annotIndex >= annotFiles.length) {
+    document.getElementById('annot-drop-text').style.display = 'block';
+    document.getElementById('annot-img').style.display = 'none';
+    document.getElementById('annot-filename').textContent = `✓ Tous les fichiers annotés (${annotFiles.length})`;
+    return;
+  }
+  const file = annotFiles[annotIndex];
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = document.getElementById('annot-img');
+    img.src = ev.target.result;
+    img.style.display = 'block';
+    document.getElementById('annot-drop-text').style.display = 'none';
+    document.getElementById('annot-filename').textContent = `${annotIndex + 1}/${annotFiles.length} · ${file.name}`;
+  };
+  reader.readAsDataURL(file);
+  // Reset selection
+  annotSelLoc = null;
+  document.getElementById('annot-selected').textContent = 'Aucune localisation sélectionnée';
+  document.getElementById('annot-selected').style.color = '#374151';
+  buildAnnulus('annulus-annot', true, null, annotSelectLoc);
+  const btn = document.getElementById('annot-save-btn');
+  btn.disabled = true;
+  btn.style.opacity = '0.3';
+  document.getElementById('annot-status').textContent = '';
+}
+
+async function annotSave() {
+  if (!annotSelLoc || annotIndex >= annotFiles.length) return;
+  const file = annotFiles[annotIndex];
+  const loc = LOCS.find(l => l.code === annotSelLoc);
+  // Convert image to base64
+  const imgEl = document.getElementById('annot-img');
+  let imageB64 = '';
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = imgEl.naturalWidth;
+    canvas.height = imgEl.naturalHeight;
+    canvas.getContext('2d').drawImage(imgEl, 0, 0);
+    imageB64 = canvas.toDataURL('image/png').split(',')[1];
+  } catch(e) { imageB64 = ''; }
+
+  const row = {
+    case_id: 'ANNOT_' + new Date().toISOString().replace(/[-:T]/g,'').slice(0,14) + '_' + annotIndex,
+    date: new Date().toISOString().slice(0,10),
+    ecg_file: file.name,
+    label_code: annotSelLoc,
+    label_text: loc?.label || '',
+    label_class: encLoc(annotSelLoc),
+    label_side: encSide(annotSelLoc),
+    label_angle: loc?.angle ?? null,
+    mode: 'annotation_rapide',
+    _image_b64: imageB64,
+    _image_filename: file.name,
+  };
+
+  const st = document.getElementById('annot-status');
+  st.textContent = 'Envoi...';
+  st.style.color = '#64748b';
+
+  try {
+    const fd = new URLSearchParams();
+    fd.append('data', JSON.stringify(row));
+    await fetch('https://script.google.com/macros/s/AKfycbzCiZPaUJHMDZN0xzm4Xi2f_y-0dSNXZEoN4-CdbewQIZlOxd7FIefCJOd200jlWn8J/exec', {
+      method: 'POST', mode: 'no-cors', body: fd,
+    });
+    annotCount++;
+    document.getElementById('annot-counter').textContent = `${annotCount} annoté(s)`;
+    st.textContent = `✓ ${annotSelLoc} sauvegardé`;
+    st.style.color = '#22c55e';
+    annotIndex++;
+    setTimeout(showAnnotFile, 600);
+  } catch(e) {
+    st.textContent = '⚠ Erreur envoi';
+    st.style.color = '#ef4444';
+  }
+}
+
+function annotSkip() {
+  annotIndex++;
+  showAnnotFile();
+}
+
+// Enter key to save in annotation mode
+document.addEventListener('keydown', e => {
+  if (annotMode && e.key === 'Enter' && annotSelLoc) annotSave();
+});
+
+// ===========================
+// ML MODEL v1
+// ===========================
+const ML_MODEL = {"version": "1.1", "trained_on": 12, "total_annotated": 36, "date": "2026-03-09", "classes": ["ALL", "LL", "PHD", "PLL", "PSR"], "feature_cols": ["pr_ms", "qrs_ms", "delta_ms", "amp_delta_mv", "ratio_delta_qrs", "preexcitation_score", "pol_I", "pol_II", "pol_III", "pol_aVR", "pol_aVL", "pol_aVF", "pol_V1", "pol_V2", "pol_V3", "pol_V4", "pol_V5", "pol_V6"], "feature_medians": {"pr_ms": 100.0, "qrs_ms": 125.0, "delta_ms": 60.0, "amp_delta_mv": 0.3, "ratio_delta_qrs": 0.4, "preexcitation_score": 56.0, "pol_I": 1.0, "pol_II": 1.0, "pol_III": 1.0, "pol_aVR": -1.0, "pol_aVL": 1.0, "pol_aVF": 1.0, "pol_V1": 1.0, "pol_V2": 1.0, "pol_V3": 1.0, "pol_V4": 1.0, "pol_V5": 1.0, "pol_V6": 1.0}, "n_trees": 30, "trees": [{"children_left": [1, -1, 3, -1, 5, -1, 7, -1, -1], "children_right": [2, -1, 4, -1, 6, -1, 8, -1, -1], "feature": [5, -2, 3, -2, 7, -2, 10, -2, -2], "threshold": [39.0, -2.0, 0.2, -2.0, 0.0, -2.0, 0.0, -2.0, -2.0], "value": [[0.25, 0.3333333333333333, 0.16666666666666666, 0.16666666666666666, 0.08333333333333333], [0.0, 1.0, 0.0, 0.0, 0.0], [0.375, 0.0, 0.25, 0.25, 0.125], [0.0, 0.0, 1.0, 0.0, 0.0], [0.5, 0.0, 0.0, 0.3333333333333333, 0.16666666666666666], [0.0, 0.0, 0.0, 0.0, 1.0], [0.6, 0.0, 0.0, 0.4, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0]]}, {"children_left": [1, -1, 3, -1, 5, -1, 7, -1, -1], "children_right": [2, -1, 4, -1, 6, -1, 8, -1, -1], "feature": [12, -2, 4, -2, 8, -2, 0, -2, -2], "threshold": [0.0, -2.0, 0.175, -2.0, 0.0, -2.0, 120.0, -2.0, -2.0], "value": [[0.0, 0.3333333333333333, 0.25, 0.0, 0.4166666666666667], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.5714285714285714, 0.42857142857142855, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.4, 0.6, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.6666666666666666, 0.3333333333333333, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0]]}, {"children_left": [1, -1, 3, -1, 5, -1, 7, -1, -1], "children_right": [2, -1, 4, -1, 6, -1, 8, -1, -1], "feature": [5, -2, 10, -2, 4, -2, 5, -2, -2], "threshold": [39.0, -2.0, 0.5, -2.0, 0.275, -2.0, 56.0, -2.0, -2.0], "value": [[0.16666666666666666, 0.16666666666666666, 0.25, 0.16666666666666666, 0.25], [0.0, 1.0, 0.0, 0.0, 0.0], [0.2, 0.0, 0.3, 0.2, 0.3], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.375, 0.25, 0.375], [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.16666666666666666, 0.3333333333333333, 0.5], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.3333333333333333, 0.6666666666666666, 0.0]]}, {"children_left": [1, 2, 3, 4, -1, -1, -1, -1, 9, 10, -1, 12, -1, -1, -1], "children_right": [8, 7, 6, 5, -1, -1, -1, -1, 14, 11, -1, 13, -1, -1, -1], "feature": [10, 3, 1, 5, -2, -2, -2, -2, 8, 1, -2, 1, -2, -2, -2], "threshold": [0.5, 0.65, 100.0, 42.0, -2.0, -2.0, -2.0, -2.0, 0.0, 105.0, -2.0, 155.0, -2.0, -2.0, -2.0], "value": [[0.25, 0.08333333333333333, 0.16666666666666666, 0.08333333333333333, 0.4166666666666667], [0.75, 0.25, 0.0, 0.0, 0.0], [0.6666666666666666, 0.3333333333333333, 0.0, 0.0, 0.0], [0.5, 0.5, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.25, 0.125, 0.625], [0.0, 0.0, 0.14285714285714285, 0.14285714285714285, 0.7142857142857143], [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.16666666666666666, 0.8333333333333334], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0]]}, {"children_left": [1, 2, 3, 4, -1, -1, -1, -1, -1], "children_right": [8, 7, 6, 5, -1, -1, -1, -1, -1], "feature": [4, 4, 0, 4, -2, -2, -2, -2, -2], "threshold": [0.625, 0.51, 115.0, 0.365, -2.0, -2.0, -2.0, -2.0, -2.0], "value": [[0.3333333333333333, 0.16666666666666666, 0.08333333333333333, 0.16666666666666666, 0.25], [0.1111111111111111, 0.2222222222222222, 0.1111111111111111, 0.2222222222222222, 0.3333333333333333], [0.16666666666666666, 0.3333333333333333, 0.16666666666666666, 0.3333333333333333, 0.0], [0.25, 0.0, 0.25, 0.5, 0.0], [0.5, 0.0, 0.5, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 1.0], [1.0, 0.0, 0.0, 0.0, 0.0]]}, {"children_left": [1, 2, -1, 4, 5, -1, -1, 8, -1, -1, 11, -1, -1], "children_right": [10, 3, -1, 7, 6, -1, -1, 9, -1, -1, 12, -1, -1], "feature": [1, 10, -2, 7, 4, -2, -2, 11, -2, -2, 7, -2, -2], "threshold": [145.0, 0.5, -2.0, 0.0, 0.42, -2.0, -2.0, 0.0, -2.0, -2.0, 0.5, -2.0, -2.0], "value": [[0.3333333333333333, 0.08333333333333333, 0.08333333333333333, 0.25, 0.25], [0.2857142857142857, 0.14285714285714285, 0.14285714285714285, 0.0, 0.42857142857142855], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.2, 0.2, 0.0, 0.6], [0.0, 0.0, 0.3333333333333333, 0.0, 0.6666666666666666], [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.5, 0.0, 0.0, 0.5], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.4, 0.0, 0.0, 0.6, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0]]}, {"children_left": [1, 2, 3, -1, -1, -1, 7, -1, -1], "children_right": [6, 5, 4, -1, -1, -1, 8, -1, -1], "feature": [11, 7, 5, -2, -2, -2, 4, -2, -2], "threshold": [0.0, 0.5, 65.5, -2.0, -2.0, -2.0, 0.39, -2.0, -2.0], "value": [[0.25, 0.16666666666666666, 0.0, 0.16666666666666666, 0.4166666666666667], [0.0, 0.0, 0.0, 0.2857142857142857, 0.7142857142857143], [0.0, 0.0, 0.0, 0.5, 0.5], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 0.0, 1.0], [0.6, 0.4, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0]]}, {"children_left": [1, -1, 3, 4, -1, 6, -1, -1, 9, -1, -1], "children_right": [2, -1, 8, 5, -1, 7, -1, -1, 10, -1, -1], "feature": [0, -2, 0, 10, -2, 4, -2, -2, 12, -2, -2], "threshold": [90.0, -2.0, 110.0, 0.5, -2.0, 0.45, -2.0, -2.0, 0.0, -2.0, -2.0], "value": [[0.3333333333333333, 0.16666666666666666, 0.08333333333333333, 0.08333333333333333, 0.3333333333333333], [0.0, 0.0, 0.0, 0.0, 1.0], [0.4444444444444444, 0.2222222222222222, 0.1111111111111111, 0.1111111111111111, 0.1111111111111111], [0.6666666666666666, 0.0, 0.16666666666666666, 0.16666666666666666, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.5, 0.5, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.6666666666666666, 0.0, 0.0, 0.3333333333333333], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 0.0, 0.0]]}, {"children_left": [1, 2, -1, 4, -1, -1, 7, -1, 9, -1, -1], "children_right": [6, 3, -1, 5, -1, -1, 8, -1, 10, -1, -1], "feature": [1, 6, -2, 2, -2, -2, 4, -2, 12, -2, -2], "threshold": [125.0, 0.0, -2.0, 55.0, -2.0, -2.0, 0.39, -2.0, 0.0, -2.0, -2.0], "value": [[0.25, 0.16666666666666666, 0.0, 0.16666666666666666, 0.4166666666666667], [0.5, 0.5, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.3333333333333333, 0.6666666666666666, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.125, 0.0, 0.0, 0.25, 0.625], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.2857142857142857, 0.7142857142857143], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 1.0, 0.0]]}, {"children_left": [1, -1, 3, 4, -1, -1, 7, -1, 9, -1, -1], "children_right": [2, -1, 6, 5, -1, -1, 8, -1, 10, -1, -1], "feature": [5, -2, 1, 1, -2, -2, 4, -2, 7, -2, -2], "threshold": [39.0, -2.0, 120.0, 85.0, -2.0, -2.0, 0.45, -2.0, 0.5, -2.0, -2.0], "value": [[0.08333333333333333, 0.25, 0.16666666666666666, 0.5, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.1111111111111111, 0.0, 0.2222222222222222, 0.6666666666666666, 0.0], [0.5, 0.0, 0.5, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.14285714285714285, 0.8571428571428571, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.25, 0.75, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0]]}, {"children_left": [1, -1, 3, 4, -1, -1, 7, -1, 9, -1, -1], "children_right": [2, -1, 6, 5, -1, -1, 8, -1, 10, -1, -1], "feature": [12, -2, 3, 11, -2, -2, 2, -2, 5, -2, -2], "threshold": [0.0, -2.0, 0.2, 0.0, -2.0, -2.0, 55.0, -2.0, 61.5, -2.0, -2.0], "value": [[0.4166666666666667, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.3333333333333333], [0.0, 0.0, 0.0, 0.0, 1.0], [0.625, 0.125, 0.125, 0.125, 0.0], [0.0, 0.5, 0.5, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.8333333333333334, 0.0, 0.0, 0.16666666666666666, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.6666666666666666, 0.0, 0.0, 0.3333333333333333, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0]]}, {"children_left": [1, -1, 3, 4, -1, -1, 7, 8, -1, -1, 11, -1, -1], "children_right": [2, -1, 6, 5, -1, -1, 10, 9, -1, -1, 12, -1, -1], "feature": [7, -2, 8, 12, -2, -2, 3, 10, -2, -2, 1, -2, -2], "threshold": [-0.5, -2.0, 0.0, 0.0, -2.0, -2.0, 0.45, -0.5, -2.0, -2.0, 155.0, -2.0, -2.0], "value": [[0.16666666666666666, 0.16666666666666666, 0.25, 0.25, 0.16666666666666666], [0.0, 0.0, 1.0, 0.0, 0.0], [0.2222222222222222, 0.2222222222222222, 0.0, 0.3333333333333333, 0.2222222222222222], [0.0, 0.0, 0.0, 0.3333333333333333, 0.6666666666666666], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.3333333333333333, 0.3333333333333333, 0.0, 0.3333333333333333, 0.0], [0.3333333333333333, 0.6666666666666666, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.5, 0.5, 0.0, 0.0, 0.0], [0.3333333333333333, 0.0, 0.0, 0.6666666666666666, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0]]}, {"children_left": [1, -1, 3, 4, 5, -1, -1, -1, 9, -1, -1], "children_right": [2, -1, 8, 7, 6, -1, -1, -1, 10, -1, -1], "feature": [5, -2, 3, 2, 8, -2, -2, -2, 4, -2, -2], "threshold": [42.0, -2.0, 0.5, 55.0, 0.0, -2.0, -2.0, -2.0, 0.39, -2.0, -2.0], "value": [[0.25, 0.3333333333333333, 0.0, 0.16666666666666666, 0.25], [0.0, 1.0, 0.0, 0.0, 0.0], [0.375, 0.0, 0.0, 0.25, 0.375], [0.4, 0.0, 0.0, 0.0, 0.6], [0.6666666666666666, 0.0, 0.0, 0.0, 0.3333333333333333], [0.0, 0.0, 0.0, 0.0, 1.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 1.0], [0.3333333333333333, 0.0, 0.0, 0.6666666666666666, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0]]}, {"children_left": [1, -1, 3, -1, 5, 6, -1, -1, -1], "children_right": [2, -1, 4, -1, 8, 7, -1, -1, -1], "feature": [2, -2, 0, -2, 3, 7, -2, -2, -2], "threshold": [15.0, -2.0, 90.0, -2.0, 1.15, 0.0, -2.0, -2.0, -2.0], "value": [[0.08333333333333333, 0.4166666666666667, 0.25, 0.0, 0.25], [0.0, 1.0, 0.0, 0.0, 0.0], [0.14285714285714285, 0.0, 0.42857142857142855, 0.0, 0.42857142857142855], [0.0, 0.0, 0.0, 0.0, 1.0], [0.25, 0.0, 0.75, 0.0, 0.0], [0.5, 0.0, 0.5, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0]]}, {"children_left": [1, -1, 3, -1, 5, -1, 7, -1, -1], "children_right": [2, -1, 4, -1, 6, -1, 8, -1, -1], "feature": [10, -2, 12, -2, 1, -2, 3, -2, -2], "threshold": [0.5, -2.0, 0.0, -2.0, 155.0, -2.0, 1.75, -2.0, -2.0], "value": [[0.4166666666666667, 0.0, 0.25, 0.16666666666666666, 0.16666666666666666], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.42857142857142855, 0.2857142857142857, 0.2857142857142857], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.6, 0.4, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.75, 0.25, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0]]}, {"children_left": [1, -1, 3, 4, -1, -1, 7, -1, -1], "children_right": [2, -1, 6, 5, -1, -1, 8, -1, -1], "feature": [10, -2, 8, 1, -2, -2, 2, -2, -2], "threshold": [0.5, -2.0, 0.0, 155.0, -2.0, -2.0, 70.0, -2.0, -2.0], "value": [[0.3333333333333333, 0.0, 0.08333333333333333, 0.3333333333333333, 0.25], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.125, 0.5, 0.375], [0.0, 0.0, 0.0, 0.4, 0.6], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.3333333333333333, 0.6666666666666666, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0]]}, {"children_left": [1, -1, 3, -1, 5, -1, 7, -1, -1], "children_right": [2, -1, 4, -1, 6, -1, 8, -1, -1], "feature": [3, -2, 12, -2, 5, -2, 6, -2, -2], "threshold": [0.15, -2.0, 0.0, -2.0, 36.0, -2.0, 0.0, -2.0, -2.0], "value": [[0.16666666666666666, 0.16666666666666666, 0.3333333333333333, 0.08333333333333333, 0.25], [0.0, 0.0, 1.0, 0.0, 0.0], [0.2222222222222222, 0.2222222222222222, 0.1111111111111111, 0.1111111111111111, 0.3333333333333333], [0.0, 0.0, 0.0, 0.0, 1.0], [0.3333333333333333, 0.3333333333333333, 0.16666666666666666, 0.16666666666666666, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.5, 0.0, 0.25, 0.25, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.3333333333333333, 0.0, 0.3333333333333333, 0.3333333333333333, 0.0]]}, {"children_left": [1, -1, 3, 4, 5, -1, -1, -1, -1], "children_right": [2, -1, 8, 7, 6, -1, -1, -1, -1], "feature": [0, -2, 5, 5, 3, -2, -2, -2, -2], "threshold": [85.0, -2.0, 67.5, 59.5, 0.45, -2.0, -2.0, -2.0, -2.0], "value": [[0.4166666666666667, 0.0, 0.0, 0.25, 0.3333333333333333], [0.0, 0.0, 0.0, 0.0, 1.0], [0.625, 0.0, 0.0, 0.375, 0.0], [0.7142857142857143, 0.0, 0.0, 0.2857142857142857, 0.0], [0.3333333333333333, 0.0, 0.0, 0.6666666666666666, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0]]}, {"children_left": [1, -1, 3, 4, 5, -1, -1, -1, 9, -1, -1], "children_right": [2, -1, 8, 7, 6, -1, -1, -1, 10, -1, -1], "feature": [0, -2, 10, 3, 0, -2, -2, -2, 3, -2, -2], "threshold": [90.0, -2.0, 0.5, 0.65, 120.0, -2.0, -2.0, -2.0, 0.35, -2.0, -2.0], "value": [[0.3333333333333333, 0.08333333333333333, 0.08333333333333333, 0.16666666666666666, 0.3333333333333333], [0.0, 0.0, 0.0, 0.0, 1.0], [0.5, 0.125, 0.125, 0.25, 0.0], [0.8, 0.2, 0.0, 0.0, 0.0], [0.6666666666666666, 0.3333333333333333, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.3333333333333333, 0.6666666666666666, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0]]}, {"children_left": [1, -1, 3, 4, -1, 6, -1, -1, 9, -1, 11, -1, -1], "children_right": [2, -1, 8, 5, -1, 7, -1, -1, 10, -1, 12, -1, -1], "feature": [5, -2, 4, 10, -2, 1, -2, -2, 7, -2, 5, -2, -2], "threshold": [39.0, -2.0, 0.39, 0.0, -2.0, 105.0, -2.0, -2.0, 0.5, -2.0, 65.5, -2.0, -2.0], "value": [[0.25, 0.16666666666666666, 0.3333333333333333, 0.16666666666666666, 0.08333333333333333], [0.0, 1.0, 0.0, 0.0, 0.0], [0.3, 0.0, 0.4, 0.2, 0.1], [0.5, 0.0, 0.25, 0.0, 0.25], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.5, 0.0, 0.5], [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 1.0], [0.16666666666666666, 0.0, 0.5, 0.3333333333333333, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.2, 0.0, 0.6, 0.2, 0.0], [0.5, 0.0, 0.0, 0.5, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0]]}, {"children_left": [1, -1, 3, 4, -1, -1, 7, -1, -1], "children_right": [2, -1, 6, 5, -1, -1, 8, -1, -1], "feature": [10, -2, 11, 1, -2, -2, 2, -2, -2], "threshold": [0.0, -2.0, 0.0, 145.0, -2.0, -2.0, 70.0, -2.0, -2.0], "value": [[0.25, 0.0, 0.08333333333333333, 0.25, 0.4166666666666667], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.1111111111111111, 0.3333333333333333, 0.5555555555555556], [0.0, 0.0, 0.0, 0.16666666666666666, 0.8333333333333334], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.3333333333333333, 0.6666666666666666, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0]]}, {"children_left": [1, -1, 3, -1, 5, 6, -1, -1, -1], "children_right": [2, -1, 4, -1, 8, 7, -1, -1, -1], "feature": [5, -2, 8, -2, 2, 1, -2, -2, -2], "threshold": [44.0, -2.0, 0.0, -2.0, 70.0, 115.0, -2.0, -2.0, -2.0], "value": [[0.25, 0.0, 0.3333333333333333, 0.08333333333333333, 0.3333333333333333], [0.0, 0.0, 1.0, 0.0, 0.0], [0.3333333333333333, 0.0, 0.1111111111111111, 0.1111111111111111, 0.4444444444444444], [0.0, 0.0, 0.0, 0.0, 1.0], [0.6, 0.0, 0.2, 0.2, 0.0], [0.75, 0.0, 0.0, 0.25, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.5, 0.0, 0.0, 0.5, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0]]}, {"children_left": [1, -1, 3, 4, -1, -1, 7, -1, 9, -1, -1], "children_right": [2, -1, 6, 5, -1, -1, 8, -1, 10, -1, -1], "feature": [5, -2, 4, 12, -2, -2, 10, -2, 3, -2, -2], "threshold": [44.0, -2.0, 0.39, 0.0, -2.0, -2.0, 0.5, -2.0, 1.75, -2.0, -2.0], "value": [[0.3333333333333333, 0.0, 0.25, 0.3333333333333333, 0.08333333333333333], [0.0, 0.0, 1.0, 0.0, 0.0], [0.4, 0.0, 0.1, 0.4, 0.1], [0.75, 0.0, 0.0, 0.0, 0.25], [0.0, 0.0, 0.0, 0.0, 1.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.16666666666666666, 0.0, 0.16666666666666666, 0.6666666666666666, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.2, 0.8, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0]]}, {"children_left": [1, -1, 3, -1, 5, 6, -1, -1, 9, -1, -1], "children_right": [2, -1, 4, -1, 8, 7, -1, -1, 10, -1, -1], "feature": [4, -2, 3, -2, 5, 5, -2, -2, 5, -2, -2], "threshold": [0.23, -2.0, 0.35, -2.0, 61.5, 56.0, -2.0, -2.0, 67.5, -2.0, -2.0], "value": [[0.3333333333333333, 0.3333333333333333, 0.08333333333333333, 0.16666666666666666, 0.08333333333333333], [0.0, 1.0, 0.0, 0.0, 0.0], [0.5, 0.0, 0.125, 0.25, 0.125], [1.0, 0.0, 0.0, 0.0, 0.0], [0.2, 0.0, 0.2, 0.4, 0.2], [0.0, 0.0, 0.0, 0.6666666666666666, 0.3333333333333333], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.5, 0.0, 0.5, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0]]}, {"children_left": [1, 2, -1, -1, 5, 6, -1, -1, 9, -1, -1], "children_right": [4, 3, -1, -1, 8, 7, -1, -1, 10, -1, -1], "feature": [10, 1, -2, -2, 2, 0, -2, -2, 12, -2, -2], "threshold": [0.0, 100.0, -2.0, -2.0, 40.0, 115.0, -2.0, -2.0, 0.0, -2.0, -2.0], "value": [[0.25, 0.16666666666666666, 0.08333333333333333, 0.25, 0.25], [0.75, 0.25, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.125, 0.125, 0.375, 0.375], [0.0, 0.5, 0.5, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.5, 0.5], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 1.0, 0.0]]}, {"children_left": [1, 2, -1, 4, -1, -1, -1], "children_right": [6, 3, -1, 5, -1, -1, -1], "feature": [3, 5, -2, 8, -2, -2, -2], "threshold": [0.95, 35.0, -2.0, 0.0, -2.0, -2.0, -2.0], "value": [[0.08333333333333333, 0.16666666666666666, 0.0, 0.3333333333333333, 0.4166666666666667], [0.125, 0.25, 0.0, 0.0, 0.625], [0.0, 1.0, 0.0, 0.0, 0.0], [0.16666666666666666, 0.0, 0.0, 0.0, 0.8333333333333334], [0.0, 0.0, 0.0, 0.0, 1.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0]]}, {"children_left": [1, 2, 3, -1, -1, -1, 7, -1, 9, -1, -1], "children_right": [6, 5, 4, -1, -1, -1, 8, -1, 10, -1, -1], "feature": [3, 4, 10, -2, -2, -2, 4, -2, 11, -2, -2], "threshold": [0.45, 0.365, 0.0, -2.0, -2.0, -2.0, 0.45, -2.0, 0.0, -2.0, -2.0], "value": [[0.16666666666666666, 0.08333333333333333, 0.16666666666666666, 0.5, 0.08333333333333333], [0.5, 0.25, 0.0, 0.0, 0.25], [0.6666666666666666, 0.0, 0.0, 0.0, 0.3333333333333333], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.25, 0.75, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.6666666666666666, 0.3333333333333333, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0]]}, {"children_left": [1, 2, 3, -1, 5, -1, -1, -1, 9, -1, -1], "children_right": [8, 7, 4, -1, 6, -1, -1, -1, 10, -1, -1], "feature": [5, 3, 0, -2, 10, -2, -2, -2, 8, -2, -2], "threshold": [59.5, 0.5, 95.0, -2.0, 0.0, -2.0, -2.0, -2.0, 0.0, -2.0, -2.0], "value": [[0.3333333333333333, 0.08333333333333333, 0.08333333333333333, 0.25, 0.25], [0.0, 0.14285714285714285, 0.14285714285714285, 0.42857142857142855, 0.2857142857142857], [0.0, 0.25, 0.25, 0.0, 0.5], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.5, 0.5, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0], [0.8, 0.0, 0.0, 0.0, 0.2], [0.0, 0.0, 0.0, 0.0, 1.0], [1.0, 0.0, 0.0, 0.0, 0.0]]}, {"children_left": [1, -1, 3, 4, -1, -1, 7, -1, 9, -1, -1], "children_right": [2, -1, 6, 5, -1, -1, 8, -1, 10, -1, -1], "feature": [7, -2, 4, 3, -2, -2, 10, -2, 5, -2, -2], "threshold": [-0.5, -2.0, 0.39, 0.2, -2.0, -2.0, 0.5, -2.0, 56.0, -2.0, -2.0], "value": [[0.4166666666666667, 0.08333333333333333, 0.16666666666666666, 0.25, 0.08333333333333333], [0.0, 0.0, 1.0, 0.0, 0.0], [0.5, 0.1, 0.0, 0.3, 0.1], [0.8, 0.2, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.2, 0.0, 0.0, 0.6, 0.2], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.75, 0.25], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 1.0, 0.0]]}, {"children_left": [1, 2, -1, -1, 5, 6, 7, -1, -1, -1, 11, -1, -1], "children_right": [4, 3, -1, -1, 10, 9, 8, -1, -1, -1, 12, -1, -1], "feature": [10, 0, -2, -2, 8, 11, 3, -2, -2, -2, 4, -2, -2], "threshold": [0.5, 120.0, -2.0, -2.0, 0.0, 0.0, 0.15, -2.0, -2.0, -2.0, 0.265, -2.0, -2.0], "value": [[0.4166666666666667, 0.16666666666666666, 0.08333333333333333, 0.08333333333333333, 0.25], [0.8333333333333334, 0.16666666666666666, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.5], [0.0, 0.0, 0.25, 0.0, 0.75], [0.0, 0.0, 0.3333333333333333, 0.0, 0.6666666666666666], [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 0.0, 1.0], [0.0, 0.5, 0.0, 0.5, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0]]}]};
+function mlPredict(pr, qrs, delta, amp, ratio, score, pols) {
+  if (!ML_MODEL || !ML_MODEL.trees) return null;
+  const featCols = ML_MODEL.feature_cols;
+  const medians = ML_MODEL.feature_medians;
+  const polMap = {I:'pol_I',II:'pol_II',III:'pol_III',aVR:'pol_aVR',aVL:'pol_aVL',aVF:'pol_aVF',
+    V1:'pol_V1',V2:'pol_V2',V3:'pol_V3',V4:'pol_V4',V5:'pol_V5',V6:'pol_V6'};
+
+  // Build feature vector
+  const rawVals = {
+    pr_ms: pr||medians.pr_ms, qrs_ms: qrs||medians.qrs_ms,
+    delta_ms: delta||medians.delta_ms, amp_delta_mv: amp||medians.amp_delta_mv,
+    ratio_delta_qrs: ratio||medians.ratio_delta_qrs,
+    preexcitation_score: score||medians.preexcitation_score,
+  };
+  Object.entries(polMap).forEach(([lead, feat]) => {
+    const v = pols[lead];
+    rawVals[feat] = v==='+' ? 1 : v==='-' ? -1 : v==='±'||v==='iso' ? 0 : (medians[feat]||0);
+  });
+
+  const x = featCols.map(f => rawVals[f] ?? medians[f] ?? 0);
+
+  // Run forest
+  const votes = {};
+  ML_MODEL.classes.forEach(c => votes[c] = 0);
+
+  for (const tree of ML_MODEL.trees) {
+    let node = 0;
+    while (tree.children_left[node] !== -1) {
+      const feat_idx = tree.feature[node];
+      const thresh = tree.threshold[node];
+      node = x[feat_idx] <= thresh ? tree.children_left[node] : tree.children_right[node];
+    }
+    const vals = tree.value[node];
+    const total = vals.reduce((a,b)=>a+b,0);
+    ML_MODEL.classes.forEach((c,i) => votes[c] += vals[i]/total);
+  }
+
+  const nTrees = ML_MODEL.trees.length;
+  const probs = ML_MODEL.classes.map(c => ({code:c, prob: votes[c]/nTrees}));
+  probs.sort((a,b) => b.prob - a.prob);
+  return probs;
+}
+
+// ===========================
+// RESET
+// ===========================
+function resetAll() {
+  sinFile = null; maxFile = null; sinB64 = null; maxB64 = null;
+  lastResult = null; selLoc = null; autoFilled = {};
+  Object.keys(POLS).forEach(k => delete POLS[k]);
+
+  ['inp-pr','inp-qrs','inp-delta','inp-amp','inp-loc-text'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = '';
+    el.classList.remove('inp-auto');
+  });
+
+  document.getElementById('prev-sin').style.display = 'none';
+  document.getElementById('prev-max').style.display = 'none';
+  document.getElementById('icon-sin').style.display = '';
+  document.getElementById('txt-sin').style.display = '';
+  document.getElementById('txt-max').style.display = '';
+  document.getElementById('name-sin').style.display = 'none';
+  document.getElementById('name-max').style.display = 'none';
+  document.getElementById('max-section').style.display = 'none';
+  document.getElementById('loc-badge').style.display = 'none';
+  document.getElementById('zone-sin').classList.remove('has-file');
+  document.getElementById('zone-max').classList.remove('has-max');
+  document.getElementById('btn-next0').disabled = true;
+  document.getElementById('claude-analysis-output').className = 'claude-placeholder';
+  document.getElementById('claude-analysis-output').textContent = 'Cliquer sur "Analyser" pour que Claude extraie automatiquement les mesures de l\'ECG.';
+  document.getElementById('deep-output').className = 'claude-placeholder';
+  document.getElementById('deep-output').textContent = 'Cliquer pour une analyse EP approfondie.';
+  document.getElementById('btn-analyze-claude').innerHTML = 'ANALYSER →';
+  document.getElementById('btn-analyze-claude').disabled = false;
+  document.getElementById('btn-deep').innerHTML = 'ANALYSE COMPLÈTE →';
+  document.getElementById('btn-deep').disabled = false;
+  document.getElementById('file-sin').value = '';
+  document.getElementById('file-max').value = '';
+
+  buildLeadsGrid({});
+  buildAnnulus('annulus-select', true, null);
+  goTo(0);
+}
+</script>
+</body>
+</html>
