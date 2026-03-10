@@ -222,7 +222,7 @@ input[type=number]:focus,input[type=text]:focus{border-color:var(--accent)}
     </div>
 
     <div class="btn-right">
-      <button class="btn btn-primary" id="btn-next0" disabled onclick="goTo(2); analyzeWithClaude();">
+      <button class="btn btn-primary" id="btn-next0" disabled onclick="goTo(2); setTimeout(analyzeWithClaude, 100);">
         ANALYSER AVEC CLAUDE →
       </button>
     </div>
@@ -294,7 +294,7 @@ input[type=number]:focus,input[type=text]:focus{border-color:var(--accent)}
 
       <div class="btn-row">
         <button class="btn btn-ghost" onclick="goTo(0)">← RETOUR</button>
-        <button class="btn btn-primary" onclick="goTo(2)">VÉRIFIER →</button>
+        <button class="btn btn-primary" onclick="goTo(3)">VÉRIFIER →</button>
       </div>
     </div>
   </div>
