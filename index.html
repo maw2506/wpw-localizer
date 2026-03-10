@@ -1189,11 +1189,12 @@ async function exportExcel() {
   const mlRow = {
     case_id: `WPW_${new Date().toISOString().replace(/[-:T]/g,'').slice(0,14)}`,
     date: new Date().toISOString().slice(0,10),
-    preexcitation: autoFilled?.preexcitation || (
+    preexcitation: (
       score >= 70 ? 'franche' :
       score >= 40 ? 'subtile' :
       score >= 20 ? 'intermittente' : 'absente'
     ),
+    preexcitation_claude: autoFilled?.preexcitation || '',
     preexcitation_confiance: autoFilled?.preexcitation_confiance || null,
     ecg_sinusal_file: sinFile?.name || '',
     ecg_max_file: maxFile?.name || '',
@@ -1241,6 +1242,29 @@ async function exportExcel() {
     annotation_complete: Object.keys(POLS).length >= 10 ? 1 : 0,
     claude_auto_filled: Object.keys(autoFilled).length > 0 ? 1 : 0,
     commentaire_claude: autoFilled?.commentaire || '',
+    // Error metrics: 1 = Claude was wrong on this lead, 0 = correct, '' = no Claude data
+    ...(autoFilled?.polarites ? (() => {
+      const claudePols = autoFilled.polarites;
+      const errors = {};
+      let nErrors = 0;
+      ['I','II','III','aVR','aVL','aVF','V1','V2','V3','V4','V5','V6'].forEach(lead => {
+        const claudeVal = claudePols[lead];
+        const userVal = POLS[lead];
+        if (claudeVal !== null && claudeVal !== undefined && userVal) {
+          const wrong = claudeVal !== userVal ? 1 : 0;
+          errors['err_' + lead.replace('a','av')] = wrong;
+          nErrors += wrong;
+        } else {
+          errors['err_' + lead.replace('a','av')] = '';
+        }
+      });
+      errors['n_pol_corrections'] = nErrors;
+      return errors;
+    })() : {
+      err_I:'',err_II:'',err_III:'',err_avR:'',err_avL:'',err_avF:'',
+      err_V1:'',err_V2:'',err_V3:'',err_V4:'',err_V5:'',err_V6:'',
+      n_pol_corrections:''
+    }),
   };
 
   const btn = document.querySelector('.btn-green');
