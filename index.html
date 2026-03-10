@@ -657,7 +657,29 @@ async function analyzeWithClaude() {
   const isImg = sinFile && sinFile.type !== 'application/pdf';
 
   const textPrompt = `Tu es un électrophysiologiste expert en WPW qui analyse un ECG 12 dérivations.
-Procède en DEUX PASSES obligatoires avant de répondre.
+Procède en TROIS PASSES obligatoires avant de répondre.
+
+═══════════════════════════════════════
+PASSE 0 — DÉTECTION DE PRÉ-EXCITATION
+═══════════════════════════════════════
+Avant toute mesure, détermine s'il existe une pré-excitation ventriculaire sur cet ECG.
+
+CRITÈRES DE PRÉ-EXCITATION FRANCHE (les 3 doivent être présents) :
+1. PR court : intervalle PR < 120ms visible (onde P suivie très rapidement du QRS)
+2. QRS élargi : durée QRS > 110ms avec aspect anormal (pas un bloc de branche pur)
+3. Onde delta visible : slurring initial du QRS dans au moins 2 dérivations
+
+SITUATIONS PARTICULIÈRES :
+- Pré-excitation INTERMITTENTE : certains complexes sont préexcités, d'autres non → signaler
+- Pré-excitation LATENTE/SUBTILE : PR limite (110-130ms), onde delta peu visible → signaler
+- Pré-excitation MAXIMALE : QRS très large (>160ms), delta domine tout le QRS → signaler
+- Pas de pré-excitation : ECG sinusal normal, BBG, BBD, HVG → signaler et arrêter l'analyse
+
+RÉSULTAT de la Passe 0 → choisir parmi :
+- "franche" : pré-excitation claire et mesurable
+- "subtile" : pré-excitation probable mais discrète, mesures difficiles
+- "intermittente" : alternance complexes préexcités / normaux
+- "absente" : pas de pré-excitation détectable
 
 ═══════════════════════════════════════
 PASSE 1 — CALIBRATION ET ORIENTATION
@@ -723,6 +745,8 @@ AUTO-VÉRIFICATION AVANT DE RÉPONDRE :
 
 Réponds UNIQUEMENT en JSON valide sans texte avant ou après :
 {
+  "preexcitation": "franche|subtile|intermittente|absente",
+  "preexcitation_confiance": 0.0,
   "pr_ms": null,
   "qrs_ms": null,
   "delta_ms": null,
@@ -731,7 +755,7 @@ Réponds UNIQUEMENT en JSON valide sans texte avant ou après :
     "I": null, "II": null, "III": null, "aVR": null, "aVL": null, "aVF": null,
     "V1": null, "V2": null, "V3": null, "V4": null, "V5": null, "V6": null
   },
-  "commentaire": "Résume en 1-2 phrases : pattern delta dominant, axe, orientation probable du faisceau"
+  "commentaire": "1-2 phrases : statut pré-excitation, pattern delta dominant, orientation probable"
 }`;
 
   try {
@@ -764,6 +788,40 @@ Réponds UNIQUEMENT en JSON valide sans texte avant ou après :
     // Parse JSON
     const clean = text.replace(/```json|```/g,'').trim();
     const parsed = JSON.parse(clean);
+
+    // Handle preexcitation status
+    const preexStatus = parsed.preexcitation || 'franche';
+    const preexConf = parsed.preexcitation_confiance || 1.0;
+    
+    // Show preexcitation warning banner
+    const warnDiv = document.getElementById('preex-warning');
+    if (warnDiv) {
+      if (preexStatus === 'absente') {
+        warnDiv.innerHTML = '⚠️ <strong>Aucune pré-excitation détectée</strong> — Cet ECG ne semble pas avoir de WPW. Vérifier avant de continuer.';
+        warnDiv.style.background = '#7f1d1d22';
+        warnDiv.style.borderColor = '#ef4444';
+        warnDiv.style.color = '#ef4444';
+        warnDiv.style.display = 'block';
+      } else if (preexStatus === 'subtile') {
+        warnDiv.innerHTML = '⚡ <strong>Pré-excitation subtile</strong> — Delta peu visible, mesures difficiles. Vérifier attentivement. Confiance : ' + Math.round(preexConf*100) + '%';
+        warnDiv.style.background = '#78350f22';
+        warnDiv.style.borderColor = '#f59e0b';
+        warnDiv.style.color = '#f59e0b';
+        warnDiv.style.display = 'block';
+      } else if (preexStatus === 'intermittente') {
+        warnDiv.innerHTML = '🔄 <strong>Pré-excitation intermittente</strong> — Analyser les complexes préexcités uniquement. Confiance : ' + Math.round(preexConf*100) + '%';
+        warnDiv.style.background = '#1e3a5f22';
+        warnDiv.style.borderColor = '#3b82f6';
+        warnDiv.style.color = '#3b82f6';
+        warnDiv.style.display = 'block';
+      } else {
+        warnDiv.innerHTML = '✓ <strong>Pré-excitation franche</strong> — Confiance : ' + Math.round(preexConf*100) + '%';
+        warnDiv.style.background = '#14532d22';
+        warnDiv.style.borderColor = 'var(--green)';
+        warnDiv.style.color = 'var(--green)';
+        warnDiv.style.display = 'block';
+      }
+    }
 
     // Fill inputs
     if (parsed.pr_ms) { document.getElementById('inp-pr').value = parsed.pr_ms; document.getElementById('inp-pr').classList.add('inp-auto'); }
@@ -1055,6 +1113,8 @@ async function exportExcel() {
   const mlRow = {
     case_id: `WPW_${new Date().toISOString().replace(/[-:T]/g,'').slice(0,14)}`,
     date: new Date().toISOString().slice(0,10),
+    preexcitation: autoFilled?.preexcitation || 'franche',
+    preexcitation_confiance: autoFilled?.preexcitation_confiance || null,
     ecg_sinusal_file: sinFile?.name || '',
     ecg_max_file: maxFile?.name || '',
     has_max_preexcitation: maxFile ? 1 : 0,
