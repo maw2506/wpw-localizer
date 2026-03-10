@@ -900,11 +900,52 @@ function runResult() {
   const amp = parseFloat(document.getElementById('inp-amp').value) || 0;
   const score = computeScore(pr, delta, qrs, amp);
   const locResult = localize(POLS);
-  const ratio = (delta && qrs) ? Math.round(delta/qrs*100)/100 : 0;
   lastResult = {score, locResult, pr, qrs, delta, amp};
   goTo(4);
   renderResult(lastResult);
-  saveToSheet();
+  queryHFModel(pr, qrs, delta, amp, score);
+}
+
+async function queryHFModel(pr, qrs, delta, amp, score) {
+  const mlDiv = document.getElementById('ml-predictions');
+  if (!mlDiv) return;
+  mlDiv.innerHTML = '<span style="color:var(--muted2)">⏳ Modèle ML...</span>';
+
+  try {
+    const POL_MAP = {'+':1,'-':-1,'±':0.5,'iso':0};
+    const LEADS = ['I','II','III','aVR','aVL','aVF','V1','V2','V3','V4','V5','V6'];
+    const features = [
+      pr||0, qrs||0, delta||0, amp||0,
+      (delta&&qrs)?delta/qrs:0, score||0,
+      ...LEADS.map(l => POL_MAP[POLS[l]] ?? 0)
+    ];
+
+    // Get image as base64
+    const useB64 = sinB64 || maxB64 || '';
+
+    const payload = {
+      features: features,
+      image_b64: useB64.includes(',') ? useB64.split(',')[1] : useB64
+    };
+
+    const resp = await fetch('https://maw2506-wpw-localizer.hf.space/predict_multimodal', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (!resp.ok) throw new Error('HF ' + resp.status);
+    const data = await resp.json();
+
+    if (data.top5) {
+      lastResult.mlProbs = data.top5;
+      renderResult(lastResult);
+    }
+  } catch(err) {
+    if (mlDiv) mlDiv.innerHTML = '<span style="color:var(--muted2)">ML non disponible</span>';
+    console.warn('HF query failed:', err.message);
+  }
 }
 
 // ===========================
