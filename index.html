@@ -185,9 +185,10 @@ input[type=number]:focus,input[type=text]:focus{border-color:var(--accent)}
 
 <div class="steps">
   <button class="step active" onclick="goTo(0)">01 · UPLOAD</button>
-  <button class="step" onclick="goTo(1)">02 · ANALYSE CLAUDE</button>
-  <button class="step" onclick="goTo(2)">03 · VÉRIFICATION</button>
-  <button class="step" onclick="goTo(3)">04 · RÉSULTAT</button>
+  <button class="step" onclick="goTo(1)">02 · MODE</button>
+  <button class="step" onclick="goTo(2)">03 · ANALYSE</button>
+  <button class="step" onclick="goTo(3)">04 · VÉRIFICATION</button>
+  <button class="step" onclick="goTo(4)">05 · RÉSULTAT</button>
 </div>
 
 <!-- ANNOTATION RAPIDE MODE -->
@@ -262,15 +263,47 @@ input[type=number]:focus,input[type=text]:focus{border-color:var(--accent)}
     </div>
 
     <div class="btn-right">
-      <button class="btn btn-primary" id="btn-next0" disabled onclick="goTo(1)">
-        ANALYSER AVEC CLAUDE →
+      <button class="btn btn-primary" id="btn-next0" disabled onclick="goToMode()">
+        CONTINUER →
       </button>
     </div>
   </div>
 </div>
 
 <!-- STEP 1: CLAUDE ANALYSIS -->
-<div id="step-1" class="panel" style="display:none">
+<!-- STEP 1b: MODE CHOICE -->
+<div id="step-mode" class="panel" style="display:none">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:24px;padding:20px 0">
+    <div style="font-size:11px;color:var(--muted2);letter-spacing:0.1em">CHOISIR LE MODE D'ANALYSE</div>
+    
+    <!-- ML prediction preview -->
+    <div id="ml-preview-card" style="width:100%;max-width:500px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center">
+      <div style="font-size:9px;color:var(--purple);letter-spacing:0.1em;margin-bottom:8px">PRÉDICTION ML IMMÉDIATE</div>
+      <div id="ml-preview-result" style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:4px">—</div>
+      <div id="ml-preview-label" style="font-size:11px;color:var(--muted2);margin-bottom:12px">—</div>
+      <div id="ml-preview-bars" style="display:flex;flex-direction:column;gap:4px"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;max-width:500px">
+      <!-- Mode rapide -->
+      <div onclick="chooseMode('quick')" style="cursor:pointer;background:var(--card);border:2px solid var(--border);border-radius:10px;padding:20px;transition:border-color 0.2s" 
+           onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:22px;margin-bottom:8px">⚡</div>
+        <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px">MODE RAPIDE</div>
+        <div style="font-size:10px;color:var(--muted2);line-height:1.5">Le ML propose une localisation.<br>Tu corriges si besoin.<br>~10 secondes par ECG.</div>
+      </div>
+      <!-- Mode détaillé -->
+      <div onclick="chooseMode('detailed')" style="cursor:pointer;background:var(--card);border:2px solid var(--border);border-radius:10px;padding:20px;transition:border-color 0.2s"
+           onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:22px;margin-bottom:8px">🔬</div>
+        <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px">MODE DÉTAILLÉ</div>
+        <div style="font-size:10px;color:var(--muted2);line-height:1.5">Claude analyse l'ECG.<br>Mesures + polarités + localisation.<br>~2 minutes par ECG.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="step-2" class="panel" style="display:none">
   <div class="g2">
     <div>
       <div class="card-title">ECG SINUSAL</div>
@@ -339,7 +372,7 @@ input[type=number]:focus,input[type=text]:focus{border-color:var(--accent)}
 </div>
 
 <!-- STEP 2: VERIFICATION + GOLD STANDARD -->
-<div id="step-2" class="panel" style="display:none">
+<div id="step-3" class="panel" style="display:none">
   <div class="g2">
     <div>
       <div class="card-title">LOCALISATION GOLD STANDARD</div>
@@ -372,7 +405,34 @@ input[type=number]:focus,input[type=text]:focus{border-color:var(--accent)}
 </div>
 
 <!-- STEP 3: RESULT -->
-<div id="step-3" class="panel" style="display:none">
+<!-- STEP for quick mode correction -->
+<div id="step-quick" class="panel" style="display:none">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+    <!-- Left: ECG preview -->
+    <div>
+      <div class="card-title">ECG</div>
+      <img id="quick-ecg-img" style="width:100%;border-radius:8px;border:1px solid var(--border)" src="" alt="">
+    </div>
+    <!-- Right: ML prediction + correction -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div>
+        <div class="card-title">PRÉDICTION ML</div>
+        <div id="quick-pred-display" style="font-size:14px;color:var(--text);background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px"></div>
+      </div>
+      <div>
+        <div class="card-title">LOCALISATION CORRECTE · cliquer pour corriger</div>
+        <svg id="annulus-quick" viewBox="0 0 320 320" style="width:100%;max-width:280px"></svg>
+        <div id="quick-selected" style="font-size:12px;color:var(--muted2);margin-top:6px">Cliquer sur l'anneau pour corriger, sinon valider directement</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-green" style="flex:1;justify-content:center" onclick="saveQuickMode()">✓ VALIDER &amp; SAUVEGARDER</button>
+      </div>
+      <div id="quick-save-status" style="font-size:10px;color:var(--muted2);text-align:center;min-height:16px"></div>
+    </div>
+  </div>
+</div>
+
+<div id="step-4" class="panel" style="display:none">
   <div class="g13">
     <div class="card" style="display:flex;flex-direction:column;align-items:center;gap:14px">
       <div class="card-title" style="text-align:center">SCORE PRÉ-EXCITATION</div>
@@ -866,19 +926,7 @@ function buildRecap() {
 // ===========================
 // RUN RESULT
 // ===========================
-function runResult() {
-  const pr = parseFloat(document.getElementById('inp-pr').value)||0;
-  const qrs = parseFloat(document.getElementById('inp-qrs').value)||0;
-  const delta = parseFloat(document.getElementById('inp-delta').value)||0;
-  const amp = parseFloat(document.getElementById('inp-amp').value)||0;
-  const score = computeScore(pr, delta, qrs, amp);
-  const locResult = localize(POLS);
-  const ratio = (delta && qrs) ? Math.round(delta/qrs*100)/100 : 0;
-  const mlProbs = mlPredict(pr, qrs, delta, amp, ratio, score, POLS);
-  lastResult = {score, locResult, pr, qrs, delta, amp, mlProbs};
-  goTo(3);
-  renderResult(lastResult);
-}
+
 
 // ===========================
 // RENDER GAUGE
@@ -1323,6 +1371,161 @@ function mlPredict(pr, qrs, delta, amp, ratio, score, pols) {
   const probs = ML_MODEL.classes.map(c => ({code:c, prob: votes[c]/nTrees}));
   probs.sort((a,b) => b.prob - a.prob);
   return probs;
+}
+
+// ===========================
+// MODE SELECTION & QUICK MODE
+// ===========================
+let currentMode = 'detailed'; // 'quick' or 'detailed'
+let quickSelLoc = null;
+
+function goToMode() {
+  // Run ML prediction immediately on the uploaded image
+  const mlProbs = mlPredict(0, 0, 0, 0, 0, 0, {});
+  showMLPreview(mlProbs);
+  goTo(1);
+}
+
+function showMLPreview(mlProbs) {
+  if (!mlProbs || mlProbs.length === 0) {
+    document.getElementById('ml-preview-result').textContent = '—';
+    document.getElementById('ml-preview-label').textContent = "Modèle en cours d'apprentissage";
+    return;
+  }
+  const top = mlProbs[0];
+  const loc = LOCS.find(l => l.code === top.code);
+  document.getElementById('ml-preview-result').textContent = top.code;
+  document.getElementById('ml-preview-label').textContent = (loc?.label || '') + ' · ' + Math.round(top.prob*100) + '% confiance';
+  
+  const bars = document.getElementById('ml-preview-bars');
+  bars.innerHTML = mlProbs.slice(0,3).map((p,i) => {
+    const pct = Math.round(p.prob*100);
+    const color = i===0?'var(--green)':i===1?'var(--blue)':'var(--muted2)';
+    return '<div style="display:flex;align-items:center;gap:8px">' +
+      '<span style="font-size:9px;color:'+color+';width:32px">'+p.code+'</span>' +
+      '<div style="flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden">' +
+      '<div style="width:'+pct+'%;height:100%;background:'+color+'"></div></div>' +
+      '<span style="font-size:9px;color:'+color+';width:28px;text-align:right">'+pct+'%</span></div>';
+  }).join('');
+}
+
+function chooseMode(mode) {
+  currentMode = mode;
+  if (mode === 'quick') {
+    // Go directly to quick correction
+    const mlProbs = mlPredict(0, 0, 0, 0, 0, 0, {});
+    setupQuickMode(mlProbs);
+    // Show quick step
+    document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+    document.getElementById('step-quick').style.display = 'block';
+    document.querySelectorAll('.step').forEach((s,i) => {
+      s.classList.toggle('active', i===2);
+      s.classList.toggle('done', i<2);
+    });
+  } else {
+    // Go to detailed Claude analysis
+    goTo(2);
+    analyzeWithClaude();
+  }
+}
+
+function setupQuickMode(mlProbs) {
+  // Show ECG image
+  const img = document.getElementById('quick-ecg-img');
+  if (maxB64) img.src = maxB64;
+  else if (sinB64) img.src = sinB64;
+
+  // Show ML prediction
+  const predDiv = document.getElementById('quick-pred-display');
+  if (mlProbs && mlProbs.length > 0) {
+    predDiv.innerHTML = mlProbs.slice(0,3).map((p,i) => {
+      const loc = LOCS.find(l => l.code === p.code);
+      const pct = Math.round(p.prob*100);
+      const color = i===0?'var(--green)':i===1?'var(--blue)':'var(--muted2)';
+      return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">' +
+        '<span style="color:'+color+';font-weight:'+(i===0?'600':'400')+'">'+p.code+' — '+(loc?.label||'')+'</span>' +
+        '<span style="color:'+color+'">'+pct+'%</span></div>';
+    }).join('');
+  } else {
+    predDiv.innerHTML = '<span style="color:var(--muted2)">Modèle en apprentissage — prédiction aléatoire</span>';
+  }
+
+  // Pre-select top ML prediction on annulus
+  quickSelLoc = mlProbs && mlProbs.length > 0 ? mlProbs[0].code : null;
+  buildAnnulus('annulus-quick', true, quickSelLoc, (code) => {
+    quickSelLoc = code;
+    const loc = LOCS.find(l => l.code === code);
+    document.getElementById('quick-selected').textContent = 'Sélectionné : ' + code + ' — ' + (loc?.label||'');
+    document.getElementById('quick-selected').style.color = 'var(--green)';
+    buildAnnulus('annulus-quick', true, code, arguments.callee);
+  });
+  if (quickSelLoc) {
+    const loc = LOCS.find(l => l.code === quickSelLoc);
+    document.getElementById('quick-selected').textContent = 'ML prédit : ' + quickSelLoc + ' — ' + (loc?.label||'') + ' · Corriger si besoin';
+  }
+}
+
+async function saveQuickMode() {
+  const finalLoc = quickSelLoc;
+  if (!finalLoc) { alert('Sélectionne une localisation'); return; }
+  
+  const loc = LOCS.find(l => l.code === finalLoc);
+  const mlProbs = mlPredict(0,0,0,0,0,0,{});
+  const mlTop = mlProbs && mlProbs.length > 0 ? mlProbs[0].code : '';
+  const concordance = mlTop === finalLoc ? 1 : 0;
+  
+  const useFile = maxFile || sinFile;
+  const b64src = maxB64 || sinB64;
+  const imageB64 = b64src && b64src.includes(',') ? b64src.split(',')[1] : (b64src||'');
+
+  const row = {
+    case_id: 'QUICK_' + new Date().toISOString().replace(/[-:T]/g,'').slice(0,14),
+    date: new Date().toISOString().slice(0,10),
+    ecg_file: useFile ? useFile.name : '',
+    mode: 'quick',
+    ml_pred: mlTop,
+    ml_concordance: concordance,
+    label_code: finalLoc,
+    label_text: loc?.label || '',
+    label_class: encLoc(finalLoc),
+    label_side: encSide(finalLoc),
+    label_angle: loc?.angle ?? null,
+    _image_b64: imageB64,
+    _image_filename: useFile ? useFile.name : '',
+  };
+
+  const st = document.getElementById('quick-save-status');
+  st.textContent = 'Envoi...';
+  st.style.color = 'var(--muted2)';
+
+  try {
+    const fd = new URLSearchParams();
+    fd.append('data', JSON.stringify(row));
+    await fetch('https://script.google.com/macros/s/AKfycbzCiZPaUJHMDZN0xzm4Xi2f_y-0dSNXZEoN4-CdbewQIZlOxd7FIefCJOd200jlWn8J/exec', {
+      method: 'POST', mode: 'no-cors', body: fd,
+    });
+    st.textContent = '✓ Sauvegardé · ' + finalLoc + (concordance ? ' (ML correct)' : ' (ML corrigé : ' + mlTop + ')');
+    st.style.color = 'var(--green)';
+    setTimeout(() => resetApp(), 2000);
+  } catch(e) {
+    st.textContent = '⚠ Erreur envoi';
+    st.style.color = '#ef4444';
+  }
+}
+
+// Update runResult to go to step 4 instead of 3
+function runResult() {
+  const pr = parseFloat(document.getElementById('inp-pr').value)||0;
+  const qrs = parseFloat(document.getElementById('inp-qrs').value)||0;
+  const delta = parseFloat(document.getElementById('inp-delta').value)||0;
+  const amp = parseFloat(document.getElementById('inp-amp').value)||0;
+  const score = computeScore(pr, delta, qrs, amp);
+  const locResult = localize(POLS);
+  const ratio = (delta && qrs) ? Math.round(delta/qrs*100)/100 : 0;
+  const mlProbs = mlPredict(pr, qrs, delta, amp, ratio, score, POLS);
+  lastResult = {score, locResult, pr, qrs, delta, amp, mlProbs};
+  goTo(4);
+  renderResult(lastResult);
 }
 
 // ===========================
