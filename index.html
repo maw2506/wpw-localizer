@@ -748,7 +748,7 @@ AUTO-VÉRIFICATION AVANT DE RÉPONDRE :
 □ Si delta négative en I et aVL → faisceau gauche latéral (cohérent ?)
 □ Si delta positive en V1 → faisceau droit ou para-Hissien (cohérent ?)
 
-Réponds UNIQUEMENT en JSON valide sans texte avant ou après :
+IMPORTANT : Effectue toute ta réflexion mentalement. Réponds UNIQUEMENT avec le JSON brut, sans aucun texte avant ou après, sans explications, sans les passes de raisonnement :
 {
   "preexcitation": "franche|subtile|intermittente|absente",
   "preexcitation_confiance": 0.0,
@@ -790,8 +790,12 @@ Réponds UNIQUEMENT en JSON valide sans texte avant ou après :
     const data = await res.json();
     const text = data.content?.map(b => b.text||'').join('') || '';
 
-    // Parse JSON
-    const clean = text.replace(/```json|```/g,'').trim();
+    // Parse JSON - extract even if surrounded by text
+    let clean = text.replace(/```json|```/g,'').trim();
+    // Find JSON object in response (handles text before/after)
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Aucun JSON trouvé dans la réponse');
+    clean = jsonMatch[0];
     const parsed = JSON.parse(clean);
 
     // Handle preexcitation status
