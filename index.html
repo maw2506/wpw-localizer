@@ -1210,21 +1210,27 @@ async function exportExcel() {
   const btn = document.querySelector('.btn-green');
   const origHTML = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> ENVOI DONNÉES...';
+  btn.innerHTML = '<span class="spin"></span> ENVOI...';
 
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzCiZPaUJHMDZN0xzm4Xi2f_y-0dSNXZEoN4-CdbewQIZlOxd7FIefCJOd200jlWn8J/exec';
 
   try {
-    // 1. Send data (without image)
-    const fd = new URLSearchParams();
-    fd.append('data', JSON.stringify(mlRow));
-    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: fd });
-
-    // 2. Send image separately if available
+    // Add image to mlRow (resized to reduce payload)
     const useB64 = sinB64 || maxB64 || '';
     const useFile = sinFile || maxFile;
     if (useB64 && useFile) {
+      try {
+        btn.innerHTML = '<span class="spin"></span> COMPRESSION...';
+        const resized = await resizeImage(useB64, 800);
+        mlRow._image_b64 = resized.includes(',') ? resized.split(',')[1] : resized;
+        mlRow._image_filename = useFile.name;
+      } catch(imgErr) { console.warn('resize failed', imgErr); }
     }
+
+    btn.innerHTML = '<span class="spin"></span> ENVOI...';
+    const fd = new URLSearchParams();
+    fd.append('data', JSON.stringify(mlRow));
+    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: fd });
 
     btn.innerHTML = '✓ SAUVEGARDÉ DANS SHEETS';
     btn.style.borderColor = 'var(--green)';
