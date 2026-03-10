@@ -1189,30 +1189,34 @@ async function exportExcel() {
     commentaire_claude: autoFilled?.commentaire || '',
   };
 
-  // Add image
-  const useB64 = sinB64 || maxB64 || '';
-  const useFile = sinFile || maxFile;
-  if (useB64 && useFile) {
-    mlRow._image_b64 = useB64.includes(',') ? useB64.split(',')[1] : useB64;
-    mlRow._image_filename = useFile.name;
-  }
-
   const btn = document.querySelector('.btn-green');
   const origHTML = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span> ENVOI...';
+  btn.innerHTML = '<span class="spin"></span> ENVOI DONNÉES...';
+
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzCiZPaUJHMDZN0xzm4Xi2f_y-0dSNXZEoN4-CdbewQIZlOxd7FIefCJOd200jlWn8J/exec';
 
   try {
-    const fd = new URLSearchParams(); fd.append('data', JSON.stringify(mlRow));
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    await fetch('https://script.google.com/macros/s/AKfycbzCiZPaUJHMDZN0xzm4Xi2f_y-0dSNXZEoN4-CdbewQIZlOxd7FIefCJOd200jlWn8J/exec', {
-      method: 'POST',
-      mode: 'no-cors',
-      body: fd,
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
+    // 1. Send data (without image)
+    const fd = new URLSearchParams();
+    fd.append('data', JSON.stringify(mlRow));
+    await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: fd });
+
+    // 2. Send image separately if available
+    const useB64 = sinB64 || maxB64 || '';
+    const useFile = sinFile || maxFile;
+    if (useB64 && useFile) {
+      btn.innerHTML = '<span class="spin"></span> ENVOI IMAGE...';
+      const imgB64 = useB64.includes(',') ? useB64.split(',')[1] : useB64;
+      // Send image fields as separate params (not nested in JSON) to avoid encoding issues
+      // Use FormData to avoid base64 encoding issues with URLSearchParams
+      const fd2 = new FormData();
+      fd2.append('image_only', 'true');
+      fd2.append('image_b64', imgB64);
+      fd2.append('image_filename', useFile.name);
+      fd2.append('case_id', mlRow.case_id);
+      await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: fd2 });
+    }
 
     btn.innerHTML = '✓ SAUVEGARDÉ DANS SHEETS';
     btn.style.borderColor = 'var(--green)';
