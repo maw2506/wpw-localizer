@@ -855,6 +855,23 @@ Réponds UNIQUEMENT en JSON valide sans texte avant ou après :
 }
 
 // ===========================
+// RUN RESULT
+// ===========================
+function runResult() {
+  const pr = parseFloat(document.getElementById('inp-pr').value) || 0;
+  const qrs = parseFloat(document.getElementById('inp-qrs').value) || 0;
+  const delta = parseFloat(document.getElementById('inp-delta').value) || 0;
+  const amp = parseFloat(document.getElementById('inp-amp').value) || 0;
+  const score = computeScore(pr, delta, qrs, amp);
+  const locResult = localize(POLS);
+  const ratio = (delta && qrs) ? Math.round(delta/qrs*100)/100 : 0;
+  lastResult = {score, locResult, pr, qrs, delta, amp};
+  goTo(4);
+  renderResult(lastResult);
+  saveToSheet();
+}
+
+// ===========================
 // SCORE CALCULATION
 // ===========================
 function computeScore(pr, delta, qrs, amp) {
