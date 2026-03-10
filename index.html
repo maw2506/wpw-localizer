@@ -1224,16 +1224,6 @@ async function exportExcel() {
     const useB64 = sinB64 || maxB64 || '';
     const useFile = sinFile || maxFile;
     if (useB64 && useFile) {
-      btn.innerHTML = '<span class="spin"></span> ENVOI IMAGE...';
-      const imgB64 = useB64.includes(',') ? useB64.split(',')[1] : useB64;
-      // Send image fields as separate params (not nested in JSON) to avoid encoding issues
-      // Use FormData to avoid base64 encoding issues with URLSearchParams
-      const fd2 = new FormData();
-      fd2.append('image_only', 'true');
-      fd2.append('image_b64', imgB64);
-      fd2.append('image_filename', useFile.name);
-      fd2.append('case_id', mlRow.case_id);
-      await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: fd2 });
     }
 
     btn.innerHTML = '✓ SAUVEGARDÉ DANS SHEETS';
