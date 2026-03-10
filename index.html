@@ -1189,7 +1189,11 @@ async function exportExcel() {
   const mlRow = {
     case_id: `WPW_${new Date().toISOString().replace(/[-:T]/g,'').slice(0,14)}`,
     date: new Date().toISOString().slice(0,10),
-    preexcitation: autoFilled?.preexcitation || 'franche',
+    preexcitation: autoFilled?.preexcitation || (
+      score >= 70 ? 'franche' :
+      score >= 40 ? 'subtile' :
+      score >= 20 ? 'intermittente' : 'absente'
+    ),
     preexcitation_confiance: autoFilled?.preexcitation_confiance || null,
     ecg_sinusal_file: sinFile?.name || '',
     ecg_max_file: maxFile?.name || '',
