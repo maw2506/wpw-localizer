@@ -1185,6 +1185,14 @@ async function exportExcel() {
     commentaire_claude: autoFilled?.commentaire || '',
   };
 
+  // Add image
+  const useB64 = sinB64 || maxB64 || '';
+  const useFile = sinFile || maxFile;
+  if (useB64 && useFile) {
+    mlRow._image_b64 = useB64.includes(',') ? useB64.split(',')[1] : useB64;
+    mlRow._image_filename = useFile.name;
+  }
+
   const btn = document.querySelector('.btn-green');
   const origHTML = btn.innerHTML;
   btn.disabled = true;
@@ -1192,11 +1200,15 @@ async function exportExcel() {
 
   try {
     const fd = new URLSearchParams(); fd.append('data', JSON.stringify(mlRow));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     await fetch('https://script.google.com/macros/s/AKfycbzCiZPaUJHMDZN0xzm4Xi2f_y-0dSNXZEoN4-CdbewQIZlOxd7FIefCJOd200jlWn8J/exec', {
       method: 'POST',
       mode: 'no-cors',
       body: fd,
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     btn.innerHTML = '✓ SAUVEGARDÉ DANS SHEETS';
     btn.style.borderColor = 'var(--green)';
